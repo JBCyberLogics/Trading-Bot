@@ -1,0 +1,277 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUNTIME_DIR="${ROOT_DIR}/runtime"
+LOG_DIR="${RUNTIME_DIR}/logs"
+BACKEND_PID_FILE="${RUNTIME_DIR}/backend_web.pid"
+FRONTEND_PID_FILE="${RUNTIME_DIR}/frontend_web.pid"
+
+if [ -f "${ROOT_DIR}/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT_DIR}/.env"
+  set +a
+fi
+
+BACKEND_HOST="${BOT_BACKEND_HOST:-127.0.0.1}"
+BACKEND_PORT="${BOT_BACKEND_PORT:-5100}"
+FRONTEND_HOST="${BOT_FRONTEND_HOST:-0.0.0.0}"
+FRONTEND_PORT="${BOT_FRONTEND_PORT:-3000}"
+
+resolve_proxy_host() {
+  local host="$1"
+  case "${host}" in
+    0.0.0.0|::)
+      echo "127.0.0.1"
+      ;;
+    *)
+      echo "${host}"
+      ;;
+  esac
+}
+
+resolve_public_host() {
+  local host="$1"
+  local detected
+  case "${host}" in
+    0.0.0.0|::)
+      detected="$(hostname -I 2>/dev/null | awk '{print $1}')"
+      if [ -n "${detected}" ]; then
+        echo "${detected}"
+      else
+        echo "127.0.0.1"
+      fi
+      ;;
+    *)
+      echo "${host}"
+      ;;
+  esac
+}
+
+BACKEND_PROXY_HOST="$(resolve_proxy_host "${BACKEND_HOST}")"
+BACKEND_PUBLIC_HOST="$(resolve_public_host "${BACKEND_HOST}")"
+FRONTEND_PUBLIC_HOST="$(resolve_public_host "${FRONTEND_HOST}")"
+BACKEND_URL="${BACKEND_URL:-http://${BACKEND_PROXY_HOST}:${BACKEND_PORT}}"
+BACKEND_PUBLIC_URL="http://${BACKEND_PUBLIC_HOST}:${BACKEND_PORT}"
+FRONTEND_PUBLIC_URL="http://${FRONTEND_PUBLIC_HOST}:${FRONTEND_PORT}"
+
+read_pid() {
+  local file="$1"
+  if [ -f "$file" ]; then
+    tr -d '[:space:]' < "$file"
+  fi
+}
+
+pid_on_port() {
+  local port="$1"
+  ss -ltnp 2>/dev/null \
+    | awk -v p=":${port}" '$4 ~ p {print $NF}' \
+    | sed -nE 's/.*pid=([0-9]+).*/\1/p' \
+    | head -n1
+}
+
+is_running() {
+  local pid="$1"
+  [ -n "${pid}" ] && kill -0 "${pid}" >/dev/null 2>&1
+}
+
+service_pid() {
+  local file="$1"
+  local port="$2"
+  local pid
+
+  pid="$(read_pid "${file}")"
+  if is_running "${pid}"; then
+    echo "${pid}"
+    return
+  fi
+
+  pid="$(pid_on_port "${port}")"
+  if is_running "${pid}"; then
+    echo "${pid}" > "${file}"
+    echo "${pid}"
+    return
+  fi
+}
+
+start_backend() {
+  local pid
+  pid="$(service_pid "${BACKEND_PID_FILE}" "${BACKEND_PORT}")"
+  if is_running "${pid}"; then
+    echo "backend already running (pid ${pid})"
+    return
+  fi
+
+  if [ ! -x "${ROOT_DIR}/.venv/bin/python" ]; then
+    echo "missing virtualenv python: ${ROOT_DIR}/.venv/bin/python"
+    echo "create/install first: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"
+    exit 1
+  fi
+
+  setsid env \
+    BOT_BACKEND_HOST="${BACKEND_HOST}" \
+    BOT_BACKEND_PORT="${BACKEND_PORT}" \
+    "${ROOT_DIR}/.venv/bin/python" "${ROOT_DIR}/run.py" \
+    >> "${LOG_DIR}/backend_web.log" 2>&1 < /dev/null &
+  pid="$!"
+  echo "${pid}" > "${BACKEND_PID_FILE}"
+  sleep 2
+  local bound_pid
+  bound_pid="$(service_pid "${BACKEND_PID_FILE}" "${BACKEND_PORT}")"
+  if is_running "${bound_pid}"; then
+    echo "${bound_pid}" > "${BACKEND_PID_FILE}"
+    echo "backend started (pid ${bound_pid})"
+  elif is_running "${pid}"; then
+    echo "backend started (pid ${pid})"
+  else
+    echo "backend failed to start. check ${LOG_DIR}/backend_web.log"
+    exit 1
+  fi
+}
+
+start_frontend() {
+  local pid
+  pid="$(service_pid "${FRONTEND_PID_FILE}" "${FRONTEND_PORT}")"
+  if is_running "${pid}"; then
+    echo "frontend already running (pid ${pid})"
+    return
+  fi
+
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "npm not found. install Node.js/npm first."
+    exit 1
+  fi
+
+  if [ ! -d "${ROOT_DIR}/frontend/node_modules" ]; then
+    echo "frontend dependencies missing. installing..."
+    (cd "${ROOT_DIR}/frontend" && npm install)
+  fi
+
+  (
+    cd "${ROOT_DIR}/frontend"
+    setsid env \
+      BACKEND_URL="${BACKEND_URL}" \
+      npm run dev -- --hostname "${FRONTEND_HOST}" --port "${FRONTEND_PORT}" \
+      >> "${LOG_DIR}/frontend_web.log" 2>&1 < /dev/null &
+    echo "$!" > "${FRONTEND_PID_FILE}"
+  )
+  pid="$(read_pid "${FRONTEND_PID_FILE}")"
+  sleep 2
+  local bound_pid
+  bound_pid="$(service_pid "${FRONTEND_PID_FILE}" "${FRONTEND_PORT}")"
+  if is_running "${bound_pid}"; then
+    echo "${bound_pid}" > "${FRONTEND_PID_FILE}"
+    echo "frontend started (pid ${bound_pid})"
+  elif is_running "${pid}"; then
+    echo "frontend started (pid ${pid})"
+  else
+    echo "frontend failed to start. check ${LOG_DIR}/frontend_web.log"
+    exit 1
+  fi
+}
+
+stop_process() {
+  local file="$1"
+  local name="$2"
+  local port="$3"
+  local pid
+  pid="$(service_pid "${file}" "${port}")"
+  if ! is_running "${pid}"; then
+    rm -f "${file}"
+    echo "${name} not running"
+    return
+  fi
+
+  kill "${pid}" >/dev/null 2>&1 || true
+  sleep 1
+  if is_running "${pid}"; then
+    kill -9 "${pid}" >/dev/null 2>&1 || true
+  fi
+  rm -f "${file}"
+  echo "${name} stopped"
+}
+
+print_status() {
+  local backend_pid frontend_pid
+  backend_pid="$(service_pid "${BACKEND_PID_FILE}" "${BACKEND_PORT}")"
+  frontend_pid="$(service_pid "${FRONTEND_PID_FILE}" "${FRONTEND_PORT}")"
+
+  if is_running "${backend_pid}"; then
+    echo "backend: running (pid ${backend_pid}) -> ${BACKEND_PUBLIC_URL}"
+  else
+    echo "backend: stopped"
+  fi
+  if is_running "${frontend_pid}"; then
+    echo "frontend: running (pid ${frontend_pid}) -> ${FRONTEND_PUBLIC_URL}"
+  else
+    echo "frontend: stopped"
+  fi
+
+  if command -v curl >/dev/null 2>&1; then
+    local health
+    health="$(curl -sS --max-time 2 "${BACKEND_URL}/health" 2>/dev/null || true)"
+    if [ -n "${health}" ]; then
+      echo "health: ${health}"
+    fi
+  fi
+}
+
+print_usage() {
+  cat <<EOF
+Usage: ./bot [start|stop|restart|status|logs]
+
+Commands:
+  start    Start backend and frontend (default)
+  stop     Stop backend and frontend
+  restart  Restart backend and frontend
+  status   Show process/health status
+  logs     Show latest backend/frontend logs
+EOF
+}
+
+main() {
+  mkdir -p "${LOG_DIR}"
+
+  local cmd="${1:-start}"
+  case "${cmd}" in
+    start)
+      start_backend
+      start_frontend
+      echo "backend:  ${BACKEND_PUBLIC_URL}"
+      echo "frontend: ${FRONTEND_PUBLIC_URL}"
+      ;;
+    stop)
+      stop_process "${FRONTEND_PID_FILE}" "frontend" "${FRONTEND_PORT}"
+      stop_process "${BACKEND_PID_FILE}" "backend" "${BACKEND_PORT}"
+      ;;
+    restart)
+      stop_process "${FRONTEND_PID_FILE}" "frontend" "${FRONTEND_PORT}"
+      stop_process "${BACKEND_PID_FILE}" "backend" "${BACKEND_PORT}"
+      start_backend
+      start_frontend
+      echo "backend:  ${BACKEND_PUBLIC_URL}"
+      echo "frontend: ${FRONTEND_PUBLIC_URL}"
+      ;;
+    status)
+      print_status
+      ;;
+    logs)
+      echo "=== backend log (tail) ==="
+      tail -n 80 "${LOG_DIR}/backend_web.log" 2>/dev/null || true
+      echo
+      echo "=== frontend log (tail) ==="
+      tail -n 80 "${LOG_DIR}/frontend_web.log" 2>/dev/null || true
+      ;;
+    -h|--help|help)
+      print_usage
+      ;;
+    *)
+      echo "unknown command: ${cmd}"
+      print_usage
+      exit 1
+      ;;
+  esac
+}
+
+main "${@}"

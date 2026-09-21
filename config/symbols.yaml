@@ -1,0 +1,6 @@
+default:
+  symbol: EURUSD
+  timeframe: H1
+
+tradable:
+  - EURUSD

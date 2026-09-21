@@ -1,0 +1,944 @@
+{
+  "version": "2.0.0",
+  "phase": 2,
+  "description": "Enhanced Static Logic - Core Strategies with Rich Rule-Based Trading",
+  
+  "system": {
+    "environment": "linux-wine",
+    "wine": {
+      "prefix": "/home/[username]/.mt5wine",
+      "wine_command": "wine",
+      "wineserver_command": "wineserver",
+      "mt5_install_path": "/home/[username]/.mt5wine/drive_c/Program Files/MetaTrader 5",
+      "mt5_executable": "terminal64.exe",
+      "windows_python_path": "/home/[username]/.mt5wine/drive_c/users/[username]/Local Settings/Application Data/Programs/Python/Python39/python.exe",
+      "mt5_remote_server_args": {
+        "host": "localhost",
+        "port": 18812,
+        "wine_flag": true
+      }
+    },
+    "paths": {
+      "log_directory": "/var/log/trading-bot/",
+      "data_directory": "/opt/trading-bot/data/",
+      "config_directory": "/opt/trading-bot/config/",
+      "database_path": "/opt/trading-bot/data/trades.db",
+      "credentials_store": "/opt/trading-bot/config/accounts/",
+      "performance_data": "/opt/trading-bot/data/performance/"
+    },
+    "accounts": {
+      "storage_method": "encrypted_json",
+      "encryption_key_env": "BOT_ENCRYPTION_KEY",
+      "auto_load_last_account": true,
+      "max_saved_accounts": 5
+    }
+  },
+
+  "mt5_connection": {
+    "server_config": {
+      "auto_start_server": true,
+      "server_startup_delay_seconds": 10,
+      "max_reconnect_attempts": 5,
+      "reconnect_delay_seconds": 30,
+      "connection_timeout_ms": 60000,
+      "heartbeat_interval_seconds": 5
+    },
+    "terminal_config": {
+      "portable_mode": true,
+      "enable_algo_trading": true,
+      "auto_login": false,
+      "broker_discovery_required": true,
+      "login_retry_attempts": 3,
+      "login_retry_delay_seconds": 5,
+      "unsupported_login_action": "skip"
+    },
+    "connection_state": {
+      "status": "disconnected",
+      "current_account": null,
+      "last_connected": null,
+      "connection_history": []
+    }
+  },
+
+  "pairs": {
+    "active": [],
+    "available": [],
+    "pair_config": {},
+    "pair_management": {
+      "dynamic_activation": true,
+      "save_selection_on_exit": true,
+      "auto_restore_on_start": true,
+      "fetch_from_mt5_on_connect": true,
+      "default_pairs_on_connect": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
+    }
+  },
+
+  "trading_logic": {
+    "name": "Enhanced Static Phase 2",
+    "description": "Order Book Imbalance + VWAP strategies with multi-factor entry validation",
+    
+    "strategies": {
+      "order_book_imbalance": {
+        "enabled": true,
+        "weight": 1.0,
+        "description": "Enter when bid/ask volume imbalance exceeds threshold"
+      },
+      "vwap_mean_reversion": {
+        "enabled": true,
+        "weight": 1.0,
+        "description": "Enter when price exceeds VWAP bands with imbalance confirmation"
+      },
+      "momentum_breakout": {
+        "enabled": true,
+        "weight": 0.5,
+        "description": "Enter on liquidity sweeps with momentum confirmation"
+      }
+    },
+    
+    "entry_rules": {
+      "trading_hours": {
+        "enabled": true,
+        "sessions": ["london", "newyork", "asian"],
+        "london": {
+          "start_hour": 8,
+          "end_hour": 17,
+          "timezone": "UTC",
+          "enabled": true
+        },
+        "newyork": {
+          "start_hour": 13,
+          "end_hour": 22,
+          "timezone": "UTC",
+          "enabled": true
+        },
+        "asian": {
+          "start_hour": 0,
+          "end_hour": 9,
+          "timezone": "UTC",
+          "enabled": false
+        },
+        "overlap_only": false,
+        "weekdays_only": true
+      },
+      
+      "spread_requirement": {
+        "enabled": true,
+        "max_pips": 2.0,
+        "check_on_every_tick": true,
+        "reject_if_increasing": true,
+        "per_pair_overrides": {
+          "EURUSD": 2.0,
+          "GBPUSD": 2.5,
+          "USDJPY": 3.0,
+          "AUDUSD": 2.5
+        }
+      },
+      
+      "order_book_imbalance": {
+        "enabled": true,
+        "calculation": {
+          "method": "weighted_proximity",
+          "levels_to_scan": 10,
+          "decay_factor": 0.8,
+          "update_frequency_ms": 100,
+          "smoothing_periods": 3
+        },
+        "thresholds": {
+          "long": 0.6,
+          "short": -0.6,
+          "aggressive_long": 0.5,
+          "aggressive_short": -0.5
+        },
+        "confirmation": {
+          "require_consecutive_readings": 3,
+          "consecutive_interval_ms": 100,
+          "require_volume_minimum": true,
+          "minimum_volume_lots": 5.0
+        },
+        "strategy_integration": {
+          "primary_for": ["order_book_imbalance"],
+          "confirmation_for": ["vwap_mean_reversion", "momentum_breakout"]
+        }
+      },
+      
+      "vwap": {
+        "enabled": true,
+        "calculation": {
+          "timeframe": "M5",
+          "period_bars": 20,
+          "standard_deviations": [1.0, 1.5, 2.0, 2.5],
+          "update_frequency_seconds": 5
+        },
+        "mean_reversion": {
+          "enabled": true,
+          "entry_threshold_sigma": 2.0,
+          "require_imbalance_confirmation": true,
+          "imbalance_threshold": 0.4,
+          "target_return_to_mean": true,
+          "partial_exit_at_mean": false
+        },
+        "momentum": {
+          "enabled": true,
+          "entry_threshold_sigma": 1.5,
+          "require_breakout_confirmation": true,
+          "breakout_bars": 3
+        }
+      },
+      
+      "liquidity_sweep": {
+        "enabled": true,
+        "detection": {
+          "lookback_periods": 10,
+          "sweep_margin_pips": 0.5,
+          "require_immediate_reversal": true,
+          "reversal_bars": 2
+        },
+        "confirmation": {
+          "momentum_divergence": true,
+          "rsi_period": 14,
+          "volume_spike_minimum": 1.5,
+          "post_sweep_imbalance_threshold": 0.4
+        }
+      },
+      
+      "volatility_guard": {
+        "enabled": true,
+        "atr": {
+          "timeframe": "M1",
+          "period": 14,
+          "min_pips": 1.2,
+          "max_pips": 3.5,
+          "check_before_entry": true
+        },
+        "average_spread": {
+          "enabled": true,
+          "max_multiplier": 3.0,
+          "check_period_minutes": 5
+        }
+      },
+      
+      "trade_frequency": {
+        "max_trades_per_pair_per_hour": 2,
+        "min_time_between_trades_minutes": 30,
+        "cooloff_after_loss_minutes": 15,
+        "cooloff_after_win_minutes": 5,
+        "max_trades_per_session": {
+          "london": 8,
+          "newyork": 8,
+          "asian": 4
+        }
+      },
+      
+      "concurrent_positions": {
+        "max_total": 4,
+        "max_per_pair": 1,
+        "max_direction_exposure": 2,
+        "max_same_currency_exposure": 2
+      },
+      
+      "entry_matrix": {
+        "long_requires_all": [
+          "price_below_vwap OR price_above_previous_high",
+          "imbalance > 0.6",
+          "spread < max_spread",
+          "atr_min < current_atr < atr_max",
+          "trading_hours_active",
+          "no_news_event",
+          "daily_loss_limit_not_hit"
+        ],
+        "short_requires_all": [
+          "price_above_vwap OR price_below_previous_low",
+          "imbalance < -0.6",
+          "spread < max_spread",
+          "atr_min < current_atr < atr_max",
+          "trading_hours_active",
+          "no_news_event",
+          "daily_loss_limit_not_hit"
+        ]
+      }
+    },
+    
+    "exit_rules": {
+      "take_profit": {
+        "type": "atr_multiple",
+        "value": 1.8,
+        "atr_timeframe": "M1",
+        "atr_period": 14,
+        "minimum_pips": 5.0,
+        "maximum_pips": 20.0,
+        "per_pair_overrides": {}
+      },
+      
+      "stop_loss": {
+        "type": "atr_multiple",
+        "value": 1.2,
+        "atr_timeframe": "M1",
+        "atr_period": 14,
+        "minimum_pips": 3.0,
+        "maximum_pips": 15.0,
+        "per_pair_overrides": {},
+        "use_swing_point_as_backup": true,
+        "swing_lookback_periods": 5
+      },
+      
+      "trailing_stop": {
+        "enabled": true,
+        "activation_threshold_atr": 1.0,
+        "trail_distance_atr": 0.8,
+        "minimum_trail_pips": 2.0,
+        "trail_update_frequency_seconds": 1,
+        "use_acceleration": false
+      },
+      
+      "breakeven": {
+        "enabled": true,
+        "activation_threshold_atr": 1.2,
+        "buffer_pips": 1.0,
+        "include_spread_in_buffer": true,
+        "move_stop_to_entry_plus_buffer": true,
+        "lock_in_minimum_profit": true
+      },
+      
+      "time_exit": {
+        "enabled": true,
+        "max_duration_minutes": 15,
+        "dynamic_duration": true,
+        "duration_multiplier_atr": 5.0,
+        "exit_if_not_profitable": true,
+        "exit_if_volume_decay": true,
+        "volume_decay_threshold": 0.5
+      },
+      
+      "partial_profits": {
+        "enabled": false,
+        "levels": [
+          {
+            "atr_multiple": 0.8,
+            "close_percent": 30,
+            "move_stop_to_breakeven": true
+          },
+          {
+            "atr_multiple": 1.2,
+            "close_percent": 30,
+            "move_stop_to_remainder": true
+          }
+        ]
+      }
+    },
+    
+    "requires_connection": true,
+    "auto_start_on_connect": true,
+    "pause_on_disconnect": true
+  },
+
+  "safety_monitor": {
+    "enabled": true,
+    "independent_process": true,
+    "requires_account": true,
+    "check_interval_seconds": 1,
+    
+    "daily_limits": {
+      "max_loss_percent": 2.0,
+      "max_loss_absolute": 0,
+      "max_profit_target_percent": 5.0,
+      "reset_at_midnight": true,
+      "action_on_limit_hit": "stop_trading_until_next_day",
+      "warning_at_percent": 80
+    },
+    
+    "weekly_limits": {
+      "enabled": false,
+      "max_loss_percent": 5.0,
+      "action_on_limit_hit": "reduce_size_by_50_percent"
+    },
+    
+    "drawdown_limits": {
+      "max_drawdown_percent": 5.0,
+      "max_drawdown_absolute": 0,
+      "measure_from_peak": true,
+      "action_on_limit_hit": "stop_trading_permanent_review",
+      "warning_at_percent": 80
+    },
+    
+    "position_limits": {
+      "max_lot_size_per_trade": 0.2,
+      "max_total_lot_size": 0.5,
+      "max_position_value_usd": 20000,
+      "max_risk_per_trade_percent": 1.0,
+      "max_risk_per_day_percent": 3.0
+    },
+    
+    "correlation_guard": {
+      "enabled": false,
+      "correlation_threshold": 0.7,
+      "check_interval_minutes": 5,
+      "forbidden_pairs": [],
+      "forbidden_directions": [],
+      "check_on_entry": true,
+      "check_every_minute": true,
+      "max_correlation_exposure": 2
+    },
+    
+    "news_guard": {
+      "enabled": true,
+      "calendar_source": "builtin",
+      "update_frequency_hours": 6,
+      "high_impact_only": true,
+      "medium_impact": false,
+      "minutes_before": 5,
+      "minutes_after": 5,
+      "flat_during_news": true,
+      "close_positions_before_news": true,
+      "close_minutes_before": 2,
+      "reopen_minutes_after": 5,
+      "economic_calendar_pairs": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "NZDUSD"]
+    },
+    
+    "connection_guard": {
+      "max_disconnect_seconds": 8,
+      "action_on_disconnect": "close_all_positions_and_halt",
+      "reconnect_attempts": 3,
+      "reconnect_delay_seconds": 5,
+      "require_credentials_for_reconnect": true,
+      "graceful_disconnect_on_shutdown": true
+    },
+    
+    "consecutive_losses": {
+      "enabled": true,
+      "max_consecutive_losses": 3,
+      "action_on_limit": "pause_trading_30_minutes",
+      "reduce_size_after": 2,
+      "size_reduction_factor": 0.5
+    },
+    
+    "heartbeat": {
+      "enabled": true,
+      "interval_seconds": 15,
+      "missed_heartbeats_tolerance": 2,
+      "action_on_timeout": "halt_trading",
+      "send_alerts": true
+    }
+  },
+
+  "risk_parameters": {
+    "base_currency": "USD",
+    "account_balance": 0,
+    "risk_per_trade_percent": 0.8,
+    "max_risk_per_day_percent": 3.0,
+    "max_risk_per_week_percent": 6.0,
+    
+    "position_sizing": {
+      "method": "risk_based",
+      "risk_percent_per_trade": 0.8,
+      "fixed_lot_size": 0.1,
+      "auto_calculate_from_risk": true,
+      "min_lot_size": 0.01,
+      "max_lot_size": 0.2,
+      "lot_step": 0.01,
+      "round_to_nearest_step": true,
+      "use_account_currency": true
+    },
+    
+    "kelly_criterion": {
+      "enabled": true,
+      "use_for_sizing": false,
+      "use_for_guidance": true,
+      "fraction": 0.25,
+      "update_frequency_trades": 50
+    },
+    
+    "requires_account_info": true
+  },
+
+  "data_scraping": {
+    "tick_data": {
+      "enabled": true,
+      "interval_ms": 100,
+      "store_in_database": true,
+      "retention_days": 30,
+      "start_on_connect": true,
+      "buffer_size_ticks": 10000
+    },
+    "order_book": {
+      "enabled": true,
+      "levels": 10,
+      "interval_ms": 500,
+      "store_in_database": true,
+      "retention_days": 7,
+      "start_on_connect": true,
+      "snapshot_on_imbalance": true
+    },
+    "ohlc_data": {
+      "timeframes": ["M1", "M5", "M15"],
+      "bars_to_keep": 1000,
+      "update_interval_seconds": 30,
+      "start_on_connect": true,
+      "calculate_indicators": {
+        "vwap": true,
+        "atr": true,
+        "rsi": true,
+        "moving_averages": [10, 20, 50]
+      }
+    },
+    "account_info": {
+      "update_interval_seconds": 5,
+      "store_balance_history": true,
+      "store_equity_history": true,
+      "history_retention_days": 90
+    },
+    "performance_metrics": {
+      "update_after_each_trade": true,
+      "rolling_windows": [20, 50, 100],
+      "store_daily_summary": true
+    }
+  },
+
+  "logging": {
+    "level": "INFO",
+    "format": "json",
+    "outputs": [
+      {
+        "type": "file",
+        "path": "/var/log/trading-bot/bot.log",
+        "max_size_mb": 100,
+        "max_files": 20
+      },
+      {
+        "type": "console",
+        "enabled": true
+      },
+      {
+        "type": "database",
+        "enabled": true,
+        "retention_days": 30
+      }
+    ],
+    "components": {
+      "mt5_connection": "INFO",
+      "trading_logic": "INFO",
+      "safety_monitor": "INFO",
+      "data_scraper": "INFO",
+      "dashboard_api": "INFO",
+      "account_manager": "INFO",
+      "strategy_execution": "DEBUG",
+      "entry_signals": "DEBUG",
+      "exit_signals": "DEBUG"
+    }
+  },
+
+  "alerts": {
+    "enabled": true,
+    "channels": [
+      {
+        "type": "telegram",
+        "enabled": false,
+        "bot_token": "",
+        "chat_id": ""
+      },
+      {
+        "type": "email",
+        "enabled": false,
+        "smtp_server": "",
+        "smtp_port": 587,
+        "username": "",
+        "password": "",
+        "from_address": "",
+        "to_address": ""
+      },
+      {
+        "type": "discord",
+        "enabled": false,
+        "webhook_url": ""
+      }
+    ],
+    
+    "events": {
+      "account_added": true,
+      "connection_success": true,
+      "connection_failed": true,
+      "connection_lost": true,
+      "trade_opened": {
+        "enabled": true,
+        "include_details": true
+      },
+      "trade_closed": {
+        "enabled": true,
+        "include_pnl": true
+      },
+      "trade_updated": {
+        "enabled": false
+      },
+      "signal_generated": {
+        "enabled": true,
+        "threshold": "aggressive"
+      },
+      "daily_loss_limit_approached": true,
+      "drawdown_limit_approached": true,
+      "consecutive_losses": true,
+      "emergency_stop_triggered": true,
+      "strategy_switched": true,
+      "parameter_adjusted": true
+    }
+  },
+
+  "dashboard": {
+    "enabled": true,
+    "web_server": {
+      "host": "0.0.0.0",
+      "port": 5000,
+      "session_secret": "change-this-in-production",
+      "ssl_enabled": false,
+      "ssl_cert_path": "",
+      "ssl_key_path": ""
+    },
+    "authentication": {
+      "enabled": true,
+      "username": "admin",
+      "password_hash": "",
+      "session_timeout_minutes": 120
+    },
+    "refresh_interval_seconds": 1,
+    
+    "ui_components": {
+      "connection_panel": {
+        "enabled": true,
+        "position": "top",
+        "show_account_selector": true,
+        "show_add_account_button": true,
+        "show_execute_button": true,
+        "show_connection_status": true,
+        "show_disconnect_button": true
+      },
+      
+      "account_summary": {
+        "enabled": true,
+        "show_balance": true,
+        "show_equity": true,
+        "show_margin": true,
+        "show_free_margin": true,
+        "show_daily_pnl": true,
+        "show_weekly_pnl": true,
+        "show_open_pnl": true,
+        "show_drawdown": true,
+        "chart_enabled": true
+      },
+      
+      "active_positions": {
+        "enabled": true,
+        "show_close_buttons": true,
+        "show_modify_buttons": true,
+        "show_trailing_stop_control": true,
+        "columns": ["pair", "direction", "lots", "entry", "current", "pips", "pnl", "duration", "stop", "target", "actions"]
+      },
+      
+      "pair_status": {
+        "enabled": true,
+        "show_spread": true,
+        "show_imbalance": true,
+        "show_vwap_deviation": true,
+        "show_atr": true,
+        "show_signal": true,
+        "show_strategy": true,
+        "show_bid_ask": true,
+        "enable_toggle": true
+      },
+      
+      "pair_selector": {
+        "enabled": true,
+        "allow_add_while_running": true,
+        "show_all_mt5_symbols": true,
+        "group_by_category": true,
+        "show_spread_filter": true,
+        "default_selection": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
+      },
+      
+      "strategy_controls": {
+        "enabled": true,
+        "show_strategy_weights": true,
+        "allow_disable_strategy": true,
+        "show_active_strategies": true,
+        "strategy_performance": true
+      },
+      
+      "safety_monitor": {
+        "enabled": true,
+        "show_daily_loss": true,
+        "show_drawdown": true,
+        "show_position_count": true,
+        "show_risk_used": true,
+        "show_news_guard": true,
+        "show_correlation_guard": true,
+        "show_consecutive_losses": true
+      },
+      
+      "signals_log": {
+        "enabled": true,
+        "max_entries": 100,
+        "show_all_signals": true,
+        "show_executed_signals": true,
+        "show_rejected_signals": true,
+        "filter_by_pair": true
+      },
+      
+      "performance_charts": {
+        "enabled": true,
+        "equity_curve": true,
+        "daily_pnl": true,
+        "win_rate_by_strategy": true,
+        "trade_distribution": true,
+        "time_analysis": true
+      },
+      
+      "logs_viewer": {
+        "enabled": true,
+        "max_lines": 1000,
+        "filter_by_level": true,
+        "filter_by_component": true,
+        "auto_scroll": true
+      },
+      
+      "emergency_controls": {
+        "enabled": true,
+        "big_red_stop": true,
+        "pause_button": true,
+        "resume_button": true,
+        "close_all_positions": true,
+        "disconnect_button": true,
+        "reduce_size_button": true,
+        "require_confirmation": true,
+        "require_second_confirmation_for_stop": true
+      },
+      
+      "saved_accounts": {
+        "enabled": true,
+        "show_list": true,
+        "allow_delete": true,
+        "allow_edit": true,
+        "allow_test": true,
+        "show_last_used": true
+      },
+      
+      "parameter_tuning": {
+        "enabled": true,
+        "show_current_parameters": true,
+        "allow_adjustment": true,
+        "save_profile": true,
+        "load_profile": true,
+        "reset_to_defaults": true
+      }
+    },
+    
+    "charts": {
+      "equity_chart": {
+        "type": "line",
+        "timeframes": ["1h", "1d", "1w", "1m"],
+        "show_trades": true
+      },
+      "pair_chart": {
+        "enabled": true,
+        "show_vwap": true,
+        "show_imbalance": true,
+        "show_signals": true,
+        "timeframes": ["M1", "M5", "M15"]
+      }
+    }
+  },
+
+  "account_manager": {
+    "max_saved_accounts": 10,
+    "store_encrypted": true,
+    "auto_test_on_save": true,
+    "auto_test_on_edit": true,
+    "account_fields": [
+      {
+        "name": "account_name",
+        "label": "Account Name",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g., Demo Account"
+      },
+      {
+        "name": "login",
+        "label": "Login ID",
+        "type": "number",
+        "required": true,
+        "placeholder": "12345678"
+      },
+      {
+        "name": "password",
+        "label": "Password",
+        "type": "password",
+        "required": true,
+        "placeholder": "••••••••"
+      },
+      {
+        "name": "server",
+        "label": "Server",
+        "type": "text",
+        "required": true,
+        "placeholder": "BrokerServer-Live"
+      },
+      {
+        "name": "broker_name",
+        "label": "Broker Name (optional)",
+        "type": "text",
+        "required": false,
+        "placeholder": "e.g., ICMarkets"
+      },
+      {
+        "name": "account_type",
+        "label": "Account Type",
+        "type": "select",
+        "options": ["Live", "Demo", "Contest"],
+        "required": true
+      },
+      {
+        "name": "leverage",
+        "label": "Leverage",
+        "type": "select",
+        "options": ["1:1", "1:10", "1:30", "1:50", "1:100", "1:200", "1:500"],
+        "required": false
+      },
+      {
+        "name": "currency",
+        "label": "Account Currency",
+        "type": "select",
+        "options": ["USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD", "NZD"],
+        "required": false
+      }
+    ]
+  },
+
+  "connection_flow": {
+    "steps": [
+      {
+        "step": "validate_credentials",
+        "timeout_seconds": 5
+      },
+      {
+        "step": "start_wine_server",
+        "timeout_seconds": 10
+      },
+      {
+        "step": "initialize_mt5",
+        "timeout_seconds": 15
+      },
+      {
+        "step": "login_account",
+        "timeout_seconds": 10
+      },
+      {
+        "step": "fetch_account_info",
+        "timeout_seconds": 5
+      },
+      {
+        "step": "fetch_available_pairs",
+        "timeout_seconds": 10
+      },
+      {
+        "step": "load_pair_configuration",
+        "timeout_seconds": 3
+      },
+      {
+        "step": "initialize_indicators",
+        "timeout_seconds": 5
+      },
+      {
+        "step": "start_data_scrapers",
+        "timeout_seconds": 5
+      },
+      {
+        "step": "enable_trading_logic",
+        "timeout_seconds": 2
+      }
+    ],
+    "on_success": {
+      "action": "redirect_to_dashboard",
+      "show_success_message": true,
+      "auto_start_trading": true,
+      "play_sound": true
+    },
+    "on_failure": {
+      "action": "show_error",
+      "allow_retry": true,
+      "show_detailed_logs": true,
+      "suggest_fixes": true
+    }
+  },
+
+  "strategy_performance_tracking": {
+    "enabled": true,
+    "track_by": {
+      "strategy": true,
+      "pair": true,
+      "session": true,
+      "hour_of_day": true,
+      "day_of_week": true,
+      "volatility_regime": true
+    },
+    "rolling_windows": [20, 50, 100],
+    "store_daily": true,
+    "store_weekly": true,
+    "store_monthly": true,
+    "export_enabled": true,
+    "export_format": "csv"
+  },
+
+  "startup": {
+    "auto_start_trading": false,
+    "wait_for_account": true,
+    "load_last_pair_selection": true,
+    "load_last_strategy_config": true,
+    "validate_config_on_start": true,
+    "health_check": {
+      "mt5_connection": false,
+      "wine_environment": true,
+      "database_connection": true,
+      "disk_space_gb": 10,
+      "memory_mb": 512,
+      "cpu_load_max": 80
+    },
+    "initial_delay_seconds": 3,
+    "send_startup_notification": true
+  },
+
+  "shutdown": {
+    "close_all_positions_on_exit": false,
+    "save_state": true,
+    "save_current_account": true,
+    "save_current_pairs": true,
+    "save_strategy_weights": true,
+    "max_shutdown_wait_seconds": 30,
+    "force_kill_if_hung": true,
+    "send_shutdown_notification": true
+  },
+
+  "parameter_profiles": {
+    "default": "conservative",
+    "available_profiles": {
+      "conservative": {
+        "description": "Maximum safety, fewer trades",
+        "imbalance_threshold": 0.65,
+        "max_positions": 3,
+        "risk_per_trade": 0.5,
+        "max_daily_loss": 1.5
+      },
+      "moderate": {
+        "description": "Balanced risk-reward",
+        "imbalance_threshold": 0.6,
+        "max_positions": 4,
+        "risk_per_trade": 0.8,
+        "max_daily_loss": 2.0
+      },
+      "aggressive": {
+        "description": "Higher frequency, more risk",
+        "imbalance_threshold": 0.55,
+        "max_positions": 5,
+        "risk_per_trade": 1.2,
+        "max_daily_loss": 3.0
+      }
+    },
+    "allow_custom": true,
+    "save_custom_profiles": true
+  }
+}

@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  python-bot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.python
+    volumes:
+      - ../config:/app/config
+      - ../data:/app/data
+      - ../logs:/app/logs
+      - ../database:/app/database
+    env_file:
+      - ../config/.env
+    network_mode: host
+    restart: unless-stopped

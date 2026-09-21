@@ -1,0 +1,7 @@
+rsi_period: 14
+rsi_oversold: 30
+rsi_overbought: 70
+fvg_min_pips: 1.5
+min_rr: 1.5
+impulse_atr_mult: 1.2
+trailing_activation_r: 1.0

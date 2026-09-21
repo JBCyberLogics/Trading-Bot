@@ -1,0 +1,1027 @@
+{
+  "ui_version": "2.0.0",
+  "dashboard_name": "Professional Forex Scraper Bot",
+  "description": "Real-time monitoring dashboard with right-side control panel and chart execution views",
+  "theme": {
+    "mode": "dark",
+    "primary_colors": {
+      "profit_green": "#00C853",
+      "loss_red": "#FF3D00",
+      "warning_yellow": "#FFD600",
+      "info_blue": "#2979FF",
+      "neutral_gray": "#9E9E9E",
+      "background_dark": "#1E1E1E",
+      "card_background": "#2D2D2D",
+      "card_background_alt": "#3D3D3D",
+      "border": "#3D3D3D",
+      "text_primary": "#FFFFFF",
+      "text_secondary": "#B0B0B0",
+      "text_muted": "#757575"
+    },
+    "chart_colors": {
+      "candle_bull": "#00C853",
+      "candle_bear": "#FF3D00",
+      "volume": "#2979FF",
+      "vwap": "#FFD600",
+      "ema_12": "#FF6B6B",
+      "ema_26": "#4ECDC4",
+      "support_resistance": "#9E9E9E",
+      "entry_marker": "#00C853",
+      "exit_marker": "#FF3D00",
+      "stop_loss": "#FF3D00",
+      "take_profit": "#00C853",
+      "grid_lines": "#3D3D3D"
+    },
+    "typography": {
+      "font_family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "font_sizes": {
+        "xs": "10px",
+        "sm": "12px",
+        "base": "14px",
+        "lg": "16px",
+        "xl": "18px",
+        "2xl": "20px",
+        "3xl": "24px"
+      },
+      "font_weights": {
+        "normal": 400,
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700
+      }
+    },
+    "spacing": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "12px",
+      "lg": "16px",
+      "xl": "20px",
+      "2xl": "24px",
+      "3xl": "32px"
+    },
+    "border_radius": {
+      "sm": "4px",
+      "md": "6px",
+      "lg": "8px",
+      "xl": "12px",
+      "pill": "9999px"
+    },
+    "shadows": {
+      "card": "0 4px 6px rgba(0, 0, 0, 0.3)",
+      "hover": "0 8px 12px rgba(0, 0, 0, 0.4)",
+      "active": "0 2px 4px rgba(0, 0, 0, 0.3)",
+      "tooltip": "0 4px 8px rgba(0, 0, 0, 0.5)"
+    },
+    "animations": {
+      "transition_fast": "150ms ease-in-out",
+      "transition_normal": "250ms ease-in-out",
+      "transition_slow": "350ms ease-in-out",
+      "hover_scale": "1.02",
+      "active_scale": "0.98"
+    }
+  },
+  "layout": {
+    "structure": "header-main-right",
+    "header_height": "60px",
+    "main_width": "calc(100% - 380px)",
+    "right_panel_width": "380px",
+    "min_width": "1200px",
+    "breakpoints": {
+      "desktop": "1400px",
+      "laptop": "1200px",
+      "tablet_landscape": "900px",
+      "tablet_portrait": "600px",
+      "mobile": "0"
+    },
+    "grid": {
+      "columns": 12,
+      "gutter": "16px",
+      "margin": "20px"
+    },
+    "z_index": {
+      "base": 1,
+      "dropdown": 100,
+      "modal": 1000,
+      "tooltip": 2000,
+      "notification": 3000
+    }
+  },
+  "header": {
+    "enabled": true,
+    "height": "60px",
+    "components": {
+      "connection_status": {
+        "enabled": true,
+        "position": "left",
+        "states": {
+          "connected": {
+            "icon": "🔵",
+            "color": "#00C853",
+            "text": "CONNECTED"
+          },
+          "connecting": {
+            "icon": "🟡",
+            "color": "#FFD600",
+            "text": "CONNECTING"
+          },
+          "disconnected": {
+            "icon": "🔴",
+            "color": "#FF3D00",
+            "text": "DISCONNECTED"
+          },
+          "offline": {
+            "icon": "⚫",
+            "color": "#757575",
+            "text": "OFFLINE"
+          }
+        }
+      },
+      "account_info": {
+        "enabled": true,
+        "format": "{broker} • {account_type} • ${balance}",
+        "show_equity": true,
+        "show_pnl": true
+      },
+      "session_badge": {
+        "enabled": true,
+        "sessions": {
+          "asian": { "label": "ASIA", "color": "#FFD600", "bg": "rgba(255, 214, 0, 0.1)" },
+          "london": { "label": "LONDON", "color": "#2979FF", "bg": "rgba(41, 121, 255, 0.1)" },
+          "newyork": { "label": "NY", "color": "#00C853", "bg": "rgba(0, 200, 83, 0.1)" },
+          "overlap": { "label": "LONDON/NY", "color": "#AA00FF", "bg": "rgba(170, 0, 255, 0.1)" }
+        }
+      },
+      "notification_bell": {
+        "enabled": true,
+        "icon": "🔔",
+        "show_count": true,
+        "max_count": 99
+      },
+      "settings_icon": {
+        "enabled": true,
+        "icon": "⚙️"
+      },
+      "user_menu": {
+        "enabled": true,
+        "icon": "👤",
+        "menu_items": ["Profile", "Account Settings", "API Keys", "Logout"]
+      },
+      "clock": {
+        "enabled": true,
+        "format": "HH:MM:SS",
+        "timezone": "UTC",
+        "show_server_time": true
+      }
+    }
+  },
+  "main_content": {
+    "width": "calc(100% - 380px)",
+    "padding": "16px",
+    "components": {
+      "kpi_cards": {
+        "enabled": true,
+        "position": "top",
+        "cards": [
+          {
+            "id": "today_pnl",
+            "title": "TODAY",
+            "value_format": "${value}",
+            "change_format": "▲{value}%",
+            "secondary_metrics": ["Profit Factor: {value}", "Trades: {value}"]
+          },
+          {
+            "id": "week_pnl",
+            "title": "WEEK",
+            "value_format": "${value}",
+            "change_format": "▲{value}%",
+            "secondary_metrics": ["Sharpe: {value}", "Win Rate: {value}%"]
+          },
+          {
+            "id": "month_pnl",
+            "title": "MONTH",
+            "value_format": "${value}",
+            "change_format": "▲{value}%",
+            "secondary_metrics": ["Drawdown: {value}%", "Avg RR: {value}"]
+          }
+        ]
+      },
+      "chart_section": {
+        "enabled": true,
+        "title": "REAL-TIME CHART EXECUTION",
+        "height": "500px",
+        "chart_types": ["single", "multi_grid", "order_book"],
+        "default_chart_type": "single",
+        "chart_controls": {
+          "zoom": true,
+          "indicators": true,
+          "pause": true,
+          "timeframe_tabs": ["M1", "M5", "M15", "M30", "H1"],
+          "chart_type_selector": true
+        },
+        "single_chart": {
+          "default_pair": "EURUSD",
+          "show_trade_details": true,
+          "show_entry_exit_markers": true,
+          "show_stop_target": true,
+          "indicators": ["vwap", "ema_12", "ema_26", "volume"],
+          "overlays": ["order_book_imbalance", "support_resistance"]
+        },
+        "multi_grid": {
+          "layout": "2x2",
+          "max_pairs": 4,
+          "sync_timeframe": true
+        },
+        "order_book_view": {
+          "depth_levels": 10,
+          "show_bids": true,
+          "show_asks": true,
+          "show_imbalance": true
+        },
+        "trade_details_panel": {
+          "enabled": true,
+          "position": "below_chart",
+          "show_on_hover": true,
+          "fields": [
+            "entry_price", "lots", "pips", "pnl", "signal_type",
+            "ml_confidence", "regime", "stop", "target", "trail_status", "duration"
+          ],
+          "actions": ["modify_stop", "close_now", "add_to_trail"]
+        }
+      },
+      "mini_pair_viewer": {
+        "enabled": true,
+        "position": "below_chart",
+        "height": "80px",
+        "pairs_to_show": 4,
+        "pair_items": [
+          {
+            "pair": "GBPUSD",
+            "price": "1.2645",
+            "change": "-0.2%",
+            "change_icon": "▼",
+            "imbalance": "-0.68",
+            "imbalance_color": "red",
+            "status": "active",
+            "status_icon": "⚡"
+          },
+          {
+            "pair": "USDJPY",
+            "price": "148.32",
+            "change": "+0.3%",
+            "change_icon": "▲",
+            "imbalance": "+0.31",
+            "imbalance_color": "yellow",
+            "status": "pending",
+            "status_icon": "⏳"
+          },
+          {
+            "pair": "AUDUSD",
+            "price": "0.6678",
+            "change": "+0.1%",
+            "change_icon": "▲",
+            "imbalance": "+0.12",
+            "imbalance_color": "green",
+            "status": "idle",
+            "status_icon": "—"
+          }
+        ],
+        "click_action": "switch_to_main_chart"
+      },
+      "active_positions_mini": {
+        "enabled": true,
+        "position": "sidebar_bottom",
+        "max_display": 3,
+        "show_close_buttons": true
+      }
+    }
+  },
+  "right_panel": {
+    "width": "380px",
+    "background": "#2D2D2D",
+    "padding": "16px",
+    "border_left": "1px solid #3D3D3D",
+    "sections": [
+      {
+        "id": "timeframe_selection",
+        "title": "TIMEFRAME SELECTION",
+        "icon": "⏱️",
+        "collapsible": false,
+        "components": {
+          "timeframe_radios": {
+            "type": "radio_group",
+            "name": "timeframe",
+            "options": [
+              { "value": "M1", "label": "1 MINUTE", "default": true },
+              { "value": "M5", "label": "5 MINUTES", "default": false },
+              { "value": "M15", "label": "15 MINUTES", "default": false },
+              { "value": "M30", "label": "30 MINUTES", "default": false },
+              { "value": "H1", "label": "1 HOUR", "default": false }
+            ],
+            "layout": "vertical",
+            "active_color": "#2979FF"
+          },
+          "chart_sync": {
+            "type": "radio_group",
+            "name": "chart_sync",
+            "options": [
+              { "value": "live", "label": "Live Updates", "default": true },
+              { "value": "manual", "label": "Manual Refresh", "default": false }
+            ],
+            "layout": "horizontal"
+          }
+        }
+      },
+      {
+        "id": "pair_management",
+        "title": "PAIR MANAGEMENT",
+        "icon": "📊",
+        "collapsible": true,
+        "default_collapsed": false,
+        "components": {
+          "search": {
+            "type": "search",
+            "placeholder": "Search EUR, GBP...",
+            "icon": "🔍",
+            "debounce_ms": 300
+          },
+          "filter": {
+            "type": "dropdown",
+            "label": "FILTER",
+            "options": [
+              { "value": "all", "label": "ALL PAIRS" },
+              { "value": "majors", "label": "MAJORS" },
+              { "value": "minors", "label": "MINORS" },
+              { "value": "active", "label": "ACTIVE ONLY" },
+              { "value": "inactive", "label": "INACTIVE ONLY" }
+            ],
+            "default": "all"
+          },
+          "available_pairs": {
+            "type": "pair_list",
+            "title": "AVAILABLE PAIRS",
+            "show_count": true,
+            "max_height": "300px",
+            "scroll": true,
+            "pairs": [
+              {
+                "symbol": "EURUSD",
+                "bid": "1.05234",
+                "ask": "1.05238",
+                "spread": 1.8,
+                "imbalance": 0.72,
+                "imbalance_color": "green",
+                "volatility": "HIGH",
+                "volatility_color": "orange",
+                "status": "inactive",
+                "action": "add"
+              },
+              {
+                "symbol": "GBPUSD",
+                "bid": "1.26452",
+                "ask": "1.26455",
+                "spread": 2.1,
+                "imbalance": -0.68,
+                "imbalance_color": "red",
+                "volatility": "MED",
+                "volatility_color": "yellow",
+                "status": "inactive",
+                "action": "add"
+              },
+              {
+                "symbol": "USDJPY",
+                "bid": "148.321",
+                "ask": "148.325",
+                "spread": 2.5,
+                "imbalance": 0.31,
+                "imbalance_color": "yellow",
+                "volatility": "LOW",
+                "volatility_color": "green",
+                "status": "inactive",
+                "action": "add"
+              }
+            ],
+            "action_icons": {
+              "add": "➕",
+              "remove": "❌",
+              "view": "👁️"
+            }
+          }
+        }
+      },
+      {
+        "id": "active_pairs",
+        "title": "ACTIVE PAIRS",
+        "icon": "✅",
+        "collapsible": true,
+        "default_collapsed": false,
+        "components": {
+          "max_limit": {
+            "current": 3,
+            "max": 6,
+            "show_progress": true
+          },
+          "active_list": {
+            "type": "active_pair_list",
+            "pairs": [
+              {
+                "symbol": "EURUSD",
+                "timeframe": "M5",
+                "status": "active",
+                "pnl": "+$118.00",
+                "pnl_percent": "+1.2%",
+                "pnl_color": "green",
+                "actions": ["view", "remove"]
+              },
+              {
+                "symbol": "GBPUSD",
+                "timeframe": "M5",
+                "status": "active",
+                "pnl": "-$8.20",
+                "pnl_percent": "-0.3%",
+                "pnl_color": "red",
+                "actions": ["view", "remove"]
+              },
+              {
+                "symbol": "AUDUSD",
+                "timeframe": "M5",
+                "status": "active",
+                "pnl": "+$104.00",
+                "pnl_percent": "+1.1%",
+                "pnl_color": "green",
+                "actions": ["view", "remove"]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "bot_controls",
+        "title": "BOT CONTROLS",
+        "icon": "🤖",
+        "collapsible": false,
+        "components": {
+          "start_button": {
+            "type": "button",
+            "label": "START BOT",
+            "size": "large",
+            "color": "#00C853",
+            "icon": "▶️",
+            "full_width": true,
+            "confirmation_required": true
+          },
+          "control_buttons": {
+            "layout": "horizontal",
+            "buttons": [
+              {
+                "type": "button",
+                "label": "PAUSE",
+                "size": "medium",
+                "color": "#FFD600",
+                "icon": "⏸️",
+                "action": "pause"
+              },
+              {
+                "type": "button",
+                "label": "STOP",
+                "size": "medium",
+                "color": "#FF3D00",
+                "icon": "🛑",
+                "action": "stop",
+                "confirmation_required": true
+              }
+            ]
+          },
+          "trading_mode": {
+            "type": "radio_group",
+            "title": "TRADING MODE",
+            "name": "trading_mode",
+            "options": [
+              { "value": "automatic", "label": "AUTOMATIC - Bot executes trades", "default": true },
+              { "value": "manual", "label": "MANUAL - Signals only", "default": false },
+              { "value": "semi", "label": "SEMI-AUTO - Approve each trade", "default": false }
+            ],
+            "layout": "vertical"
+          },
+          "risk_profile": {
+            "type": "slider",
+            "title": "RISK PROFILE",
+            "options": [
+              { "value": "conservative", "label": "CONSERVATIVE", "position": 0 },
+              { "value": "moderate", "label": "MODERATE", "position": 1 },
+              { "value": "aggressive", "label": "AGGRESSIVE", "position": 2 }
+            ],
+            "default": "conservative",
+            "show_labels": true,
+            "custom_edit": true
+          },
+          "daily_limit": {
+            "type": "progress",
+            "title": "DAILY LIMIT",
+            "value": 247,
+            "max": 500,
+            "unit": "$",
+            "percentage": 49,
+            "show_percentage": true,
+            "color_gradient": ["#00C853", "#FFD600", "#FF3D00"]
+          }
+        }
+      },
+      {
+        "id": "execution_log",
+        "title": "EXECUTION LOG",
+        "icon": "📝",
+        "collapsible": true,
+        "default_collapsed": false,
+        "components": {
+          "search": {
+            "type": "icon_button",
+            "icon": "🔍",
+            "action": "search_log"
+          },
+          "log_entries": {
+            "type": "log_list",
+            "max_height": "200px",
+            "scroll": true,
+            "entries": [
+              {
+                "time": "09:32:14",
+                "pair": "EURUSD",
+                "direction": "LONG",
+                "lots": 0.10,
+                "entry": "1.05234",
+                "pnl": "+$24.50",
+                "result": "win",
+                "result_icon": "✅",
+                "signal_type": "IMB",
+                "confidence": "87%",
+                "expanded": false
+              },
+              {
+                "time": "09:28:22",
+                "pair": "GBPUSD",
+                "direction": "SHORT",
+                "lots": 0.05,
+                "entry": "1.26450",
+                "pnl": "-$8.20",
+                "result": "loss",
+                "result_icon": "❌",
+                "signal_type": "VWAP",
+                "confidence": "92%",
+                "expanded": false
+              },
+              {
+                "time": "09:22:07",
+                "pair": "AUDUSD",
+                "direction": "LONG",
+                "lots": 0.08,
+                "entry": "0.66781",
+                "pnl": "+$104.00",
+                "result": "open",
+                "result_icon": "⚡",
+                "signal_type": "ML",
+                "confidence": "87%",
+                "expanded": false
+              },
+              {
+                "time": "09:15:33",
+                "pair": "USDJPY",
+                "direction": "REJECTED",
+                "reason": "Spread 3.2 >2.5",
+                "signal": "LONG",
+                "imbalance": "+0.31",
+                "result": "rejected",
+                "result_icon": "⚠️",
+                "expanded": false
+              }
+            ],
+            "actions": ["view_all", "export", "clear"]
+          }
+        }
+      },
+      {
+        "id": "system_status",
+        "title": "SYSTEM STATUS",
+        "icon": "💻",
+        "collapsible": true,
+        "default_collapsed": false,
+        "components": {
+          "metrics": [
+            {
+              "label": "CPU",
+              "value": 23,
+              "unit": "%",
+              "max": 100,
+              "show_bar": true,
+              "color": "#2979FF"
+            },
+            {
+              "label": "MEM",
+              "value": 1.2,
+              "max": 4,
+              "unit": "GB",
+              "show_bar": true,
+              "color": "#00C853"
+            },
+            {
+              "label": "LATENCY",
+              "value": 124,
+              "unit": "ms",
+              "status": "good",
+              "status_icon": "🟢",
+              "thresholds": {
+                "good": 150,
+                "warning": 300,
+                "critical": 500
+              }
+            },
+            {
+              "label": "UPTIME",
+              "value": "12d 4h",
+              "unit": "",
+              "icon": "⏱️"
+            }
+          ],
+          "ml_status": {
+            "enabled": true,
+            "models": [
+              {
+                "name": "Direction",
+                "accuracy": "87%",
+                "last_training": "03:00 today"
+              },
+              {
+                "name": "Regime",
+                "accuracy": "92%",
+                "last_training": "03:00 today"
+              },
+              {
+                "name": "Exit",
+                "status": "Training",
+                "last_training": "in progress"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "modals_and_dialogs": {
+    "timeframe_change": {
+      "title": "CHANGING TIMEFRAME TO {timeframe}",
+      "icon": "🔄",
+      "message": "Reloading chart data for all active pairs...",
+      "active_pairs_list": true,
+      "warning": "Signals will recalculate based on new timeframe. Open positions remain unaffected.",
+      "actions": ["cancel", "confirm"]
+    },
+    "add_pair": {
+      "title": "ADD {pair} TO ACTIVE?",
+      "fields": [
+        {
+          "type": "info",
+          "pair": "{pair}",
+          "price": "{bid}/{ask}",
+          "spread": "{spread}",
+          "volatility": "{volatility}",
+          "current_signal": "{signal}"
+        },
+        {
+          "type": "radio_group",
+          "label": "Select Timeframe",
+          "name": "pair_timeframe",
+          "options": [
+            { "value": "M1", "label": "1 MINUTE" },
+            { "value": "M5", "label": "5 MINUTES", "default": true },
+            { "value": "M15", "label": "15 MINUTES" }
+          ]
+        },
+        {
+          "type": "slider",
+          "label": "Risk Allocation",
+          "name": "pair_risk",
+          "options": ["CONSERVATIVE", "MODERATE", "AGGRESSIVE"],
+          "default": "CONSERVATIVE"
+        }
+      ],
+      "actions": ["cancel", "add_and_activate"]
+    },
+    "start_bot": {
+      "title": "START BOT WITH SELECTED CONFIGURATION",
+      "icon": "🚀",
+      "summary": {
+        "active_pairs": [
+          { "pair": "EURUSD", "timeframe": "M5", "risk": "Conservative" },
+          { "pair": "GBPUSD", "timeframe": "M5", "risk": "Conservative" },
+          { "pair": "AUDUSD", "timeframe": "M5", "risk": "Conservative" }
+        ],
+        "trading_mode": "AUTOMATIC",
+        "max_positions": 3,
+        "daily_limit": "$500"
+      },
+      "initialization_status": {
+        "steps": [
+          { "label": "Data feeds connected", "status": "complete" },
+          { "label": "ML models loaded", "status": "complete" },
+          { "label": "Risk parameters set", "status": "complete" },
+          { "label": "Waiting for first signal...", "status": "pending" }
+        ]
+      },
+      "actions": ["cancel", "start_now"]
+    },
+    "emergency_stop": {
+      "title": "⚠️ EMERGENCY STOP",
+      "message": "This will close ALL positions and stop trading immediately.",
+      "warning": "This action cannot be undone.",
+      "confirmation_required": true,
+      "confirmation_text": "Type 'STOP' to confirm",
+      "actions": ["cancel", "emergency_stop"]
+    },
+    "trade_details": {
+      "type": "tooltip",
+      "show_on": "hover",
+      "fields": [
+        { "label": "Entry", "value": "{entry} @ {time}" },
+        { "label": "Current", "value": "{current} ({pips} pips)" },
+        { "label": "P&L", "value": "{pnl} ({pnl_percent}%)" },
+        { "label": "Strategy", "value": "{signal_type} ({confidence} conf)" },
+        { "label": "Regime", "value": "{regime}" },
+        { "label": "Stop", "value": "{stop}" },
+        { "label": "Target", "value": "{target}" },
+        { "label": "Duration", "value": "{duration}" }
+      ],
+      "actions": ["close", "modify", "trail"]
+    }
+  },
+  "notifications": {
+    "position": "top-right",
+    "stack_limit": 5,
+    "auto_dismiss_seconds": 5,
+    "types": {
+      "success": {
+        "icon": "✅",
+        "color": "#00C853",
+        "sound": true
+      },
+      "error": {
+        "icon": "❌",
+        "color": "#FF3D00",
+        "sound": true,
+        "persistent": true
+      },
+      "warning": {
+        "icon": "⚠️",
+        "color": "#FFD600",
+        "sound": false
+      },
+      "info": {
+        "icon": "ℹ️",
+        "color": "#2979FF",
+        "sound": false
+      }
+    },
+    "events": [
+      {
+        "type": "trade_opened",
+        "title": "Trade Opened",
+        "template": "{pair} {direction} {lots} @ {price}",
+        "notification_type": "success"
+      },
+      {
+        "type": "trade_closed_win",
+        "title": "Target Hit",
+        "template": "{pair} closed +${pnl}",
+        "notification_type": "success"
+      },
+      {
+        "type": "trade_closed_loss",
+        "title": "Stop Loss Hit",
+        "template": "{pair} closed -${pnl}",
+        "notification_type": "error"
+      },
+      {
+        "type": "limit_approaching",
+        "title": "Daily Limit Approaching",
+        "template": "Current: ${current}/${max} ({percent}%)",
+        "notification_type": "warning"
+      },
+      {
+        "type": "connection_lost",
+        "title": "Connection Lost",
+        "template": "Attempting to reconnect...",
+        "notification_type": "error",
+        "persistent": true
+      }
+    ]
+  },
+  "interactions": {
+    "real_time_updates": {
+      "price_feed": {
+        "protocol": "websocket",
+        "frequency_ms": 100,
+        "visual_feedback": "smooth_transition"
+      },
+      "chart_updates": {
+        "protocol": "websocket",
+        "frequency_ms": 500,
+        "visual_feedback": "new_candle_animation"
+      },
+      "positions": {
+        "protocol": "websocket",
+        "frequency_ms": 200,
+        "visual_feedback": "color_flash"
+      },
+      "signals": {
+        "protocol": "server_sent_events",
+        "visual_feedback": "badge_appear",
+        "sound": true
+      },
+      "log": {
+        "protocol": "server_sent_events",
+        "visual_feedback": "slide_in"
+      }
+    },
+    "chart_interactions": {
+      "click_on_candle": {
+        "action": "show_details",
+        "details_panel": "trade_details"
+      },
+      "click_on_entry": {
+        "action": "show_trade_panel",
+        "panel": "active_trade_controls"
+      },
+      "double_click": {
+        "action": "switch_to_pair",
+        "target": "main_chart"
+      },
+      "right_click": {
+        "action": "show_context_menu",
+        "menu_items": ["View Chart", "Detailed Analysis", "Force Signal Check", "Disable Pair", "Pair Settings"]
+      }
+    },
+    "drag_and_drop": {
+      "pairs_to_chart": {
+        "source": "available_pairs",
+        "target": "chart_area",
+        "action": "display_pair"
+      },
+      "pairs_to_active": {
+        "source": "available_pairs",
+        "target": "active_pairs",
+        "action": "activate_pair"
+      }
+    },
+    "keyboard_shortcuts": {
+      "space": "pause_bot",
+      "s": "start_bot",
+      "e": "emergency_stop",
+      "1": "switch_timeframe_M1",
+      "5": "switch_timeframe_M5",
+      "f": "fullscreen_chart",
+      "h": "show_help"
+    }
+  },
+  "responsive_behavior": {
+    "desktop": {
+      "min_width": "1400px",
+      "layout": "full",
+      "right_panel": "expanded"
+    },
+    "laptop": {
+      "min_width": "1200px",
+      "max_width": "1399px",
+      "layout": "full",
+      "right_panel": "expanded",
+      "modifications": {
+        "kpi_cards": "condensed",
+        "chart_height": "450px"
+      }
+    },
+    "tablet_landscape": {
+      "min_width": "900px",
+      "max_width": "1199px",
+      "layout": "stacked",
+      "right_panel": "collapsible",
+      "modifications": {
+        "main_width": "100%",
+        "right_panel": "bottom_drawer",
+        "chart_height": "400px",
+        "kpi_cards": "horizontal_scroll"
+      }
+    },
+    "tablet_portrait": {
+      "min_width": "600px",
+      "max_width": "899px",
+      "layout": "stacked",
+      "right_panel": "bottom_drawer",
+      "modifications": {
+        "main_width": "100%",
+        "right_panel_width": "100%",
+        "chart_height": "350px",
+        "kpi_cards": "single_row",
+        "hide_mini_viewer": true
+      }
+    },
+    "mobile": {
+      "max_width": "599px",
+      "layout": "mobile",
+      "modifications": {
+        "header": "condensed",
+        "chart_height": "300px",
+        "right_panel": "fullscreen_modal",
+        "kpi_cards": "first_only",
+        "hide_mini_viewer": true,
+        "hide_system_status": true
+      }
+    }
+  },
+  "api_endpoints": {
+    "websocket": {
+      "base": "wss://api.tradingbot.com/ws",
+      "endpoints": {
+        "prices": "/prices",
+        "positions": "/positions",
+        "signals": "/signals",
+        "charts": "/charts"
+      }
+    },
+    "rest": {
+      "base": "https://api.tradingbot.com/v1",
+      "endpoints": {
+        "account": "/account",
+        "pairs": "/pairs",
+        "active_pairs": "/pairs/active",
+        "start_bot": "/bot/start",
+        "pause_bot": "/bot/pause",
+        "stop_bot": "/bot/stop",
+        "trade_history": "/trades",
+        "performance": "/performance",
+        "ml_models": "/ml/status"
+      },
+      "auth": {
+        "method": "bearer_token",
+        "token_refresh_minutes": 60
+      }
+    }
+  },
+  "initial_state": {
+    "connection": "connected",
+    "account": {
+      "broker": "ICMarkets-Live",
+      "balance": 24567.89,
+      "equity": 24612.45,
+      "currency": "USD"
+    },
+    "session": {
+      "current": "london",
+      "next": "newyork",
+      "next_in_minutes": 45
+    },
+    "regime": {
+      "volatility": "HIGH",
+      "market": "STRONG TREND UP",
+      "ml_confidence": 87
+    },
+    "active_pairs": ["EURUSD", "GBPUSD", "AUDUSD"],
+    "selected_timeframe": "M5",
+    "bot_status": "running",
+    "daily_pnl": 342.18,
+    "weekly_pnl": 1245.67,
+    "monthly_pnl": 3891.23
+  },
+  "i18n": {
+    "default_locale": "en",
+    "supported_locales": ["en", "es", "zh", "ja", "ru"],
+    "rtl_support": false
+  },
+  "performance": {
+    "lazy_loading": true,
+    "virtual_scrolling": {
+      "log_entries": true,
+      "pair_lists": true
+    },
+    "debounce_actions": {
+      "search": 300,
+      "resize": 250,
+      "scroll": 100
+    },
+    "caching": {
+      "static_assets": "1 year",
+      "api_responses": "30 seconds",
+      "chart_data": "5 seconds"
+    },
+    "compression": true
+  },
+  "accessibility": {
+    "aria_labels": true,
+    "keyboard_navigation": true,
+    "screen_reader_optimized": true,
+    "high_contrast_mode": false,
+    "font_scaling": true
+  },
+  "white_label": {
+    "enabled": false,
+    "custom_logo": null,
+    "custom_favicon": null,
+    "brand_color": null
+  }
+}

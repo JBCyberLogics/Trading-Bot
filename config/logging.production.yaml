@@ -1,0 +1,61 @@
+version: 1
+
+formatters:
+  detailed:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s'
+  json:
+    format: '{"timestamp": "%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "module": "%(module)s", "line": %(lineno)d, "message": "%(message)s"}'
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: detailed
+    stream: ext://sys.stdout
+
+  file:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /home/darkage/Desktop/Bot/logs/bot.log
+    when: midnight
+    backupCount: 30
+    encoding: utf8
+
+  error_file:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: ERROR
+    formatter: json
+    filename: /home/darkage/Desktop/Bot/logs/errors.log
+    when: midnight
+    backupCount: 30
+    encoding: utf8
+
+  trades_file:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /home/darkage/Desktop/Bot/logs/trades.log
+    when: midnight
+    backupCount: 90
+    encoding: utf8
+
+loggers:
+  bot:
+    level: INFO
+    handlers: [console, file]
+    propagate: false
+
+  risk:
+    level: INFO
+    handlers: [console, file]
+    propagate: false
+
+  execution:
+    level: INFO
+    handlers: [console, file, trades_file]
+    propagate: false
+
+root:
+  level: WARNING
+  handlers: [console, error_file]

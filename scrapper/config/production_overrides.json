@@ -1,0 +1,25 @@
+{
+  "system": {
+    "paths": {
+      "log_directory": "/var/log/trading-bot",
+      "data_directory": "/opt/trading-bot/data",
+      "config_directory": "/opt/trading-bot/config",
+      "database_path": "/opt/trading-bot/data/trades.db",
+      "credentials_store": "/opt/trading-bot/config/accounts"
+    }
+  },
+  "logging": {
+    "outputs": [
+      {
+        "type": "file",
+        "path": "/var/log/trading-bot/bot.log",
+        "max_size_mb": 100,
+        "max_files": 10
+      },
+      {
+        "type": "console",
+        "enabled": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+symbol: EURUSD
+lot_size: 0.01
+risk_percent: 1.0
+mode: live
+strategy_version: v2.3 (Latest)
+notification_preferences:
+  telegram: true

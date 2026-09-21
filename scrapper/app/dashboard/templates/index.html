@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Phase 1 MT5 Dashboard</title>
+    <style>
+      :root {
+        --bg: #07111a;
+        --bg2: #0f2433;
+        --panel: rgba(10, 29, 44, 0.82);
+        --line: #1f4864;
+        --txt: #ecf5fb;
+        --txt-dim: #9fb6c8;
+        --ok: #40d39b;
+        --warn: #f2a648;
+        --err: #ff5f70;
+        --accent: #1fb3ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--txt);
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        background: radial-gradient(circle at 15% 20%, #133147, transparent 40%),
+          radial-gradient(circle at 80% 10%, #1a3b4d, transparent 44%),
+          linear-gradient(150deg, var(--bg), var(--bg2));
+        min-height: 100vh;
+      }
+
+      .wrap {
+        width: min(1320px, 95vw);
+        margin: 24px auto;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+
+      .title {
+        font-size: 1.4rem;
+        letter-spacing: 0.04em;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 0.82rem;
+        color: var(--txt-dim);
+        background: rgba(17, 41, 57, 0.5);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 8px 24px rgba(2, 9, 15, 0.25);
+      }
+
+      .card h3 {
+        margin: 0 0 10px;
+        font-size: 0.95rem;
+        letter-spacing: 0.04em;
+        color: #d9edf9;
+      }
+
+      .connection {
+        grid-column: span 12;
+      }
+
+      .left-6 {
+        grid-column: span 6;
+      }
+
+      .left-4 {
+        grid-column: span 4;
+      }
+
+      .left-8 {
+        grid-column: span 8;
+      }
+
+      .left-12 {
+        grid-column: span 12;
+      }
+
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      input,
+      select,
+      button,
+      textarea {
+        border-radius: 8px;
+        border: 1px solid #24506d;
+        background: rgba(9, 25, 38, 0.92);
+        color: var(--txt);
+        padding: 9px 10px;
+        font-size: 0.9rem;
+      }
+
+      input,
+      select {
+        min-width: 140px;
+      }
+
+      button {
+        cursor: pointer;
+        transition: transform 0.12s ease, border-color 0.12s ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+        border-color: var(--accent);
+      }
+
+      .btn-primary {
+        border-color: #2f8cc0;
+        background: linear-gradient(145deg, #145a80, #1d7ab2);
+      }
+
+      .btn-danger {
+        border-color: #a33a4a;
+        background: linear-gradient(145deg, #6d1e2a, #a33246);
+      }
+
+      .kpi {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .kpi .item {
+        border: 1px solid #21465f;
+        border-radius: 8px;
+        padding: 10px;
+        background: rgba(14, 34, 50, 0.65);
+      }
+
+      .kpi .item span {
+        color: var(--txt-dim);
+        display: block;
+        font-size: 0.78rem;
+      }
+
+      .mono {
+        font-family: "Fira Code", monospace;
+        font-size: 0.86rem;
+      }
+
+      .ok {
+        color: var(--ok);
+      }
+
+      .warn {
+        color: var(--warn);
+      }
+
+      .err {
+        color: var(--err);
+      }
+
+      .log {
+        height: 260px;
+        overflow: auto;
+        font-family: "Fira Code", monospace;
+        white-space: pre-wrap;
+        font-size: 0.8rem;
+        color: #b8cfde;
+        background: rgba(6, 17, 27, 0.9);
+        border-radius: 8px;
+        border: 1px solid #21465f;
+        padding: 10px;
+      }
+
+      .login-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 10, 17, 0.82);
+        backdrop-filter: blur(3px);
+      }
+
+      .login-box {
+        width: min(420px, 92vw);
+      }
+
+      .tiny {
+        font-size: 0.75rem;
+        color: var(--txt-dim);
+      }
+
+      @media (max-width: 1020px) {
+        .left-8,
+        .left-6,
+        .left-4,
+        .connection {
+          grid-column: span 12;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loginOverlay" class="login-overlay">
+      <div class="card login-box">
+        <h3>Dashboard Login</h3>
+        <div class="row">
+          <input id="loginUser" value="admin" placeholder="username" />
+          <input id="loginPass" type="password" placeholder="password" />
+          <button id="loginBtn" class="btn-primary">Login</button>
+        </div>
+        <p id="loginError" class="tiny err"></p>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="header">
+        <div class="title">Phase 1 Standalone MT5 Bot</div>
+        <div class="badge mono" id="statusBadge">status: unknown</div>
+      </div>
+
+      <div class="grid">
+        <section class="card connection">
+          <h3>Connection Panel</h3>
+          <div class="row">
+            <select id="accountSelect"></select>
+            <button id="refreshAccounts">Refresh Accounts</button>
+            <button id="connectBtn" class="btn-primary">Connect</button>
+            <button id="disconnectBtn">Disconnect</button>
+            <button id="tradingStartBtn" class="btn-primary">Start Trading</button>
+            <button id="tradingPauseBtn">Pause</button>
+            <button id="tradingResumeBtn">Resume</button>
+            <button id="tradingStopBtn">Stop Trading</button>
+          </div>
+          <div class="tiny" id="connectionMessage"></div>
+        </section>
+
+        <section class="card left-6">
+          <h3>Saved Accounts</h3>
+          <div class="row">
+            <input id="accName" placeholder="Account Name" />
+            <input id="accLogin" placeholder="Login" type="number" />
+            <input id="accPassword" placeholder="Password" type="password" />
+            <input id="accServer" placeholder="Server" />
+            <select id="accType">
+              <option>Demo</option>
+              <option>Live</option>
+              <option>Contest</option>
+            </select>
+            <button id="saveAccBtn" class="btn-primary">Add Account</button>
+          </div>
+          <div id="accountMessage" class="tiny"></div>
+          <div id="accountsList" class="tiny"></div>
+        </section>
+
+        <section class="card left-6">
+          <h3>Pair Selector & Pair Status</h3>
+          <div class="row">
+            <input id="pairInput" placeholder="EURUSD,GBPUSD" />
+            <button id="setPairsBtn" class="btn-primary">Set Active Pairs</button>
+          </div>
+          <p class="tiny">Active: <span id="activePairs"></span></p>
+          <p class="tiny">Available: <span id="availablePairs"></span></p>
+          <div class="mono" id="pairStatusBox">{}</div>
+        </section>
+
+        <section class="card left-4">
+          <h3>Account Summary</h3>
+          <div class="kpi">
+            <div class="item"><span>Balance</span><strong id="kpiBalance">-</strong></div>
+            <div class="item"><span>Equity</span><strong id="kpiEquity">-</strong></div>
+            <div class="item"><span>Margin</span><strong id="kpiMargin">-</strong></div>
+            <div class="item"><span>Daily PnL</span><strong id="kpiPnl">-</strong></div>
+          </div>
+        </section>
+
+        <section class="card left-4">
+          <h3>Safety Monitor</h3>
+          <div class="kpi">
+            <div class="item"><span>Blocked</span><strong id="kpiBlocked">-</strong></div>
+            <div class="item"><span>Reason</span><strong id="kpiReason" class="tiny">-</strong></div>
+            <div class="item"><span>Drawdown %</span><strong id="kpiDrawdown">-</strong></div>
+            <div class="item"><span>Daily PnL</span><strong id="kpiDailyPnl">-</strong></div>
+          </div>
+        </section>
+
+        <section class="card left-4">
+          <h3>Emergency Controls</h3>
+          <div class="row">
+            <button id="closeAllBtn">Close All Positions</button>
+            <button id="emergencyBtn" class="btn-danger">Big Red Stop</button>
+            <button id="logoutBtn">Logout</button>
+          </div>
+        </section>
+
+        <section class="card left-12">
+          <h3>Active Positions</h3>
+          <div class="mono" id="positionsBox">[]</div>
+        </section>
+
+        <section class="card left-12">
+          <h3>Logs Viewer</h3>
+          <div class="log" id="logsBox"></div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const state = {
+        token: localStorage.getItem("bot_token") || "",
+        refreshTimer: null,
+        refreshSec: 2,
+      };
+
+      function setToken(token) {
+        state.token = token;
+        if (token) {
+          localStorage.setItem("bot_token", token);
+        } else {
+          localStorage.removeItem("bot_token");
+        }
+      }
+
+      async function api(path, options = {}) {
+        const headers = options.headers || {};
+        headers["Content-Type"] = "application/json";
+        if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
+        const response = await fetch(path, { ...options, headers });
+        if (response.status === 401) {
+          handleUnauthorized();
+          throw new Error("unauthorized");
+        }
+        const text = await response.text();
+        let data = {};
+        try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+        if (!response.ok) {
+          throw new Error(data.detail || response.statusText);
+        }
+        return data;
+      }
+
+      function showLogin(show) {
+        document.getElementById("loginOverlay").style.display = show ? "flex" : "none";
+      }
+
+      function setTinyMessage(id, text, level = "") {
+        const node = document.getElementById(id);
+        node.textContent = text;
+        node.className = `tiny${level ? ` ${level}` : ""}`;
+      }
+
+      function stopAutoRefresh() {
+        if (state.refreshTimer) {
+          clearInterval(state.refreshTimer);
+          state.refreshTimer = null;
+        }
+      }
+
+      function startAutoRefresh() {
+        stopAutoRefresh();
+        state.refreshTimer = setInterval(async () => {
+          try {
+            await refreshAll();
+          } catch (err) {
+            if (String(err.message || err) !== "unauthorized") {
+              setTinyMessage("connectionMessage", String(err.message || err), "err");
+            }
+          }
+        }, state.refreshSec * 1000);
+      }
+
+      function handleUnauthorized() {
+        setToken("");
+        stopAutoRefresh();
+        showLogin(true);
+        document.getElementById("loginError").textContent = "Session expired. Please login again.";
+      }
+
+      function fmt(value) {
+        if (value === null || value === undefined || value === "") return "-";
+        if (typeof value === "number") return value.toFixed(2);
+        return String(value);
+      }
+
+      function renderPairAnalysis(pairs) {
+        const rows = Object.values(pairs || {});
+        if (!rows.length) {
+          return "No pair analysis yet.";
+        }
+        return rows.map((row) => {
+          const lines = [
+            `${row.symbol || "PAIR"} | ${row.display_status || row.status || "Unknown"} | ${row.display_stage || row.stage || "Unknown stage"}`,
+            `Reason: ${row.display_reason || row.reason || "-"}`,
+          ];
+          if (row.spread_pips !== undefined) {
+            lines.push(`Spread: ${fmt(row.spread_pips)} pips`);
+          }
+          if (row.imbalance !== undefined) {
+            lines.push(`Imbalance: ${fmt(row.imbalance)}`);
+          }
+          if (row.safety_reason) {
+            lines.push(`Safety: ${row.safety_reason}`);
+          }
+          if (row.last_opened_trade) {
+            const last = row.last_opened_trade;
+            lines.push(`Last opened: ${last.direction || "-"} | ${last.display_reason || last.reason || "-"}`);
+          }
+          return lines.join("\n");
+        }).join("\n\n");
+      }
+
+      async function refreshAll() {
+        if (!state.token) {
+          throw new Error("unauthorized");
+        }
+        const [status, account, safety, pairs, positions, logs] = await Promise.all([
+          api("/api/status"),
+          api("/api/account"),
+          api("/api/safety"),
+          api("/api/pairs"),
+          api("/api/positions"),
+          api("/api/logs?limit=250"),
+        ]);
+
+        document.getElementById("statusBadge").textContent = `status: ${status.connection.status}`;
+        document.getElementById("kpiBalance").textContent = fmt(account.balance);
+        document.getElementById("kpiEquity").textContent = fmt(account.equity);
+        document.getElementById("kpiMargin").textContent = fmt(account.margin);
+        document.getElementById("kpiPnl").textContent = fmt(account.daily_pnl);
+
+        document.getElementById("kpiBlocked").textContent = fmt(safety.trading_blocked);
+        document.getElementById("kpiReason").textContent = fmt(safety.reason);
+        document.getElementById("kpiDrawdown").textContent = fmt(safety.current_drawdown_percent);
+        document.getElementById("kpiDailyPnl").textContent = fmt(safety.daily_pnl);
+
+        document.getElementById("activePairs").textContent = (pairs.active || []).join(", ");
+        document.getElementById("availablePairs").textContent = (pairs.available || []).join(", ");
+        document.getElementById("pairStatusBox").textContent = renderPairAnalysis((status.trade_analysis || {}).pairs || {});
+        document.getElementById("positionsBox").textContent = JSON.stringify(positions.positions || [], null, 2);
+        document.getElementById("logsBox").textContent = (logs.lines || []).join("\n");
+      }
+
+      async function loadAccounts() {
+        try {
+          const payload = await api("/api/accounts");
+          const rows = payload.items || [];
+          const select = document.getElementById("accountSelect");
+          select.innerHTML = "";
+          rows.forEach((row) => {
+            const option = document.createElement("option");
+            option.value = row.id;
+            option.textContent = `${row.account_name} (${row.login})`;
+            select.appendChild(option);
+          });
+          if (!rows.length) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "No saved accounts";
+            select.appendChild(option);
+          }
+          setTinyMessage("accountMessage", `Saved accounts: ${rows.length}`, rows.length ? "ok" : "warn");
+          document.getElementById("accountsList").textContent = JSON.stringify(rows, null, 2);
+        } catch (err) {
+          if (String(err.message || err) === "unauthorized") return;
+          setTinyMessage("accountMessage", String(err.message || err), "err");
+          document.getElementById("accountsList").textContent = String(err.message || err);
+        }
+      }
+
+      async function doLogin() {
+        const username = document.getElementById("loginUser").value.trim();
+        const password = document.getElementById("loginPass").value;
+        document.getElementById("loginError").textContent = "";
+        try {
+          const payload = await api("/api/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ username, password }),
+          });
+          setToken(payload.token);
+          showLogin(false);
+          await loadAccounts();
+          await refreshAll();
+          startAutoRefresh();
+        } catch (err) {
+          document.getElementById("loginError").textContent = String(err.message || err);
+        }
+      }
+
+      document.getElementById("loginBtn").onclick = doLogin;
+      document.getElementById("refreshAccounts").onclick = () => loadAccounts();
+
+      document.getElementById("saveAccBtn").onclick = async () => {
+        const accName = document.getElementById("accName").value.trim();
+        const loginRaw = document.getElementById("accLogin").value.trim();
+        const login = Number(loginRaw);
+        const password = document.getElementById("accPassword").value;
+        const server = document.getElementById("accServer").value.trim();
+
+        if (!loginRaw || Number.isNaN(login) || !password || !server) {
+          setTinyMessage(
+            "accountMessage",
+            "Server, Login, and Password are required.",
+            "err"
+          );
+          return;
+        }
+
+        const body = {
+          account_name: accName || `${login}@${server}`,
+          login,
+          password,
+          server,
+          account_type: document.getElementById("accType").value,
+        };
+        try {
+          const payload = await api("/api/accounts", { method: "POST", body: JSON.stringify(body) });
+          setTinyMessage("accountMessage", `Account added: ${payload.item.account_name}`, "ok");
+          document.getElementById("accName").value = "";
+          document.getElementById("accPassword").value = "";
+          await loadAccounts();
+          if (payload.item && payload.item.id) {
+            document.getElementById("accountSelect").value = payload.item.id;
+          }
+        } catch (err) {
+          setTinyMessage("accountMessage", String(err.message || err), "err");
+        }
+      };
+
+      document.getElementById("connectBtn").onclick = async () => {
+        try {
+          const account_id = document.getElementById("accountSelect").value;
+          if (!account_id) {
+            setTinyMessage("connectionMessage", "Select an account first.", "warn");
+            return;
+          }
+          const out = await api("/api/connection/connect", {
+            method: "POST",
+            body: JSON.stringify({ account_id }),
+          });
+          setTinyMessage("connectionMessage", JSON.stringify(out), "ok");
+          await refreshAll();
+        } catch (err) {
+          setTinyMessage("connectionMessage", String(err.message || err), "err");
+        }
+      };
+
+      document.getElementById("disconnectBtn").onclick = async () => {
+        try {
+          await api("/api/connection/disconnect", { method: "POST", body: "{}" });
+          setTinyMessage("connectionMessage", "Disconnected.", "warn");
+          await refreshAll();
+        } catch (err) {
+          setTinyMessage("connectionMessage", String(err.message || err), "err");
+        }
+      };
+      document.getElementById("tradingStartBtn").onclick = async () => {
+        try {
+          const payload = await api("/api/trading/start", { method: "POST", body: "{}" });
+          const pairs = ((payload.trade_analysis || {}).pairs) || {};
+          const firstPair = Object.keys(pairs)[0];
+          const firstReason = firstPair ? `${firstPair}: ${pairs[firstPair].display_reason || pairs[firstPair].reason}` : payload.analysis;
+          setTinyMessage("connectionMessage", `Trading started. ${firstReason || ""}`.trim(), "ok");
+          await refreshAll();
+        } catch (err) {
+          setTinyMessage("connectionMessage", String(err.message || err), "err");
+        }
+      };
+      document.getElementById("tradingPauseBtn").onclick = async () => {
+        try {
+          await api("/api/trading/pause", { method: "POST", body: "{}" });
+          setTinyMessage("connectionMessage", "Trading paused.", "warn");
+        } catch (err) {
+          setTinyMessage("connectionMessage", String(err.message || err), "err");
+        }
+      };
+      document.getElementById("tradingResumeBtn").onclick = async () => {
+        try {
+          await api("/api/trading/resume", { method: "POST", body: "{}" });
+          setTinyMessage("connectionMessage", "Trading resumed.", "ok");
+        } catch (err) {
+          setTinyMessage("connectionMessage", String(err.message || err), "err");
+        }
+      };
+      document.getElementById("tradingStopBtn").onclick = async () => {
+        try {
+          await api("/api/trading/stop", { method: "POST", body: "{}" });
+          setTinyMessage("connectionMessage", "Trading stopped.", "warn");
+        } catch (err) {
+          setTinyMessage("connectionMessage", String(err.message || err), "err");
+        }
+      };
+
+      document.getElementById("setPairsBtn").onclick = async () => {
+        try {
+          const symbols = document
+            .getElementById("pairInput")
+            .value.split(",")
+            .map((x) => x.trim().toUpperCase())
+            .filter(Boolean);
+          await api("/api/pairs/active", { method: "PUT", body: JSON.stringify({ active: symbols }) });
+          setTinyMessage("connectionMessage", `Active pairs updated (${symbols.length}).`, "ok");
+          await refreshAll();
+        } catch (err) {
+          setTinyMessage("connectionMessage", String(err.message || err), "err");
+        }
+      };
+
+      document.getElementById("closeAllBtn").onclick = async () => {
+        try {
+          await api("/api/emergency/close-all", { method: "POST", body: "{}" });
+          setTinyMessage("connectionMessage", "Close-all triggered.", "warn");
+        } catch (err) {
+          setTinyMessage("connectionMessage", String(err.message || err), "err");
+        }
+      };
+      document.getElementById("emergencyBtn").onclick = async () => {
+        try {
+          await api("/api/emergency/stop", { method: "POST", body: JSON.stringify({ reason: "dashboard_big_red_stop" }) });
+          setTinyMessage("connectionMessage", "Emergency stop triggered.", "err");
+        } catch (err) {
+          setTinyMessage("connectionMessage", String(err.message || err), "err");
+        }
+      };
+
+      document.getElementById("logoutBtn").onclick = async () => {
+        try {
+          await api("/api/auth/logout", { method: "POST", body: "{}" });
+        } catch {}
+        setToken("");
+        stopAutoRefresh();
+        showLogin(true);
+      };
+
+      async function bootstrap() {
+        if (!state.token) {
+          showLogin(true);
+          return;
+        }
+        try {
+          showLogin(false);
+          await api("/api/status");
+          await loadAccounts();
+          await refreshAll();
+          startAutoRefresh();
+        } catch (err) {
+          if (String(err.message || err) !== "unauthorized") {
+            setTinyMessage("connectionMessage", String(err.message || err), "err");
+          }
+        }
+      }
+
+      bootstrap();
+    </script>
+  </body>
+</html>

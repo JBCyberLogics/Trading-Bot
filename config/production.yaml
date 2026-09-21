@@ -1,0 +1,45 @@
+# Production Configuration - DO NOT COMMIT SENSITIVE DATA
+
+bot:
+  name: "SMC-ICT-Trading-Bot-Production"
+  environment: "production"
+  version: "1.0.0"
+  update_interval_seconds: 1
+  max_cpu_cores: 2
+  log_level: "INFO"
+  shutdown_timeout_seconds: 30
+
+risk:
+  max_daily_loss_pct: 2.0
+  max_weekly_loss_pct: 4.0
+  max_drawdown_pct: 6.0
+  max_consecutive_losses: 4
+  max_concurrent_positions: 2
+  base_risk_percent: 0.5
+  live_deployment_target: 30
+
+monitoring:
+  health_check_port: 3000
+  prometheus_enabled: true
+  prometheus_port: 9090
+  metrics_retention_days: 30
+
+alerts:
+  telegram_enabled: true
+  email_enabled: false
+  sms_enabled: false
+  daily_report_time: "23:59"
+  weekly_report_day: "Sunday"
+  weekly_report_time: "23:59"
+
+backup:
+  enabled: true
+  interval_hours: 6
+  retention_days: 30
+  s3_bucket: ""
+  local_path: "/home/darkage/Desktop/Bot/backups"
+
+database:
+  path: "/home/darkage/Desktop/Bot/database/live_trades.db"
+  backup_before_migration: true
+  connection_timeout: 10

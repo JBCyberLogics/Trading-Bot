@@ -1,0 +1,507 @@
+//@version=6
+strategy("ERDE_FX_30M_EXEC v2.1", shorttitle="ERDE_FX_30M_EXEC", overlay=true, pyramiding=3, calc_on_order_fills=true, calc_on_every_tick=false, initial_capital=100000)
+
+// =====================
+// Inputs
+// =====================
+src = input.source(close, "Source")
+returnType = input.string("log", "Return Type", options=["log", "simple"])
+windowSize = input.int(60, "Entropy Window", minval=20)
+binCount = input.int(5, "Bins", minval=5, maxval=5)
+smoothingLength = input.int(12, "Entropy Single Smoothing (EMA)", minval=1)
+entropyDoubleSmoothing = input.bool(true, "Entropy Double Smoothing")
+entropyShortEmaLength = input.int(3, "Entropy Short EMA Length", minval=1)
+entropyLongEmaLength = input.int(12, "Entropy Long EMA Length", minval=1)
+entropyDerivativeInclusion = input.bool(true, "Entropy Derivative Inclusion")
+volatilityLength = input.int(20, "Volatility Std Length", minval=5)
+atrLength = input.int(14, "ATR Length", minval=1)
+emaFastLen = input.int(20, "EMA Fast", minval=1)
+emaSlowLen = input.int(50, "EMA Slow", minval=1)
+trendStrengthFilterEnabled = input.bool(true, "Trend Strength Filter")
+trendStrengthSmaLength = input.int(20, "Trend Strength SMA Length", minval=1)
+volNormalization = input.string("zscore", "Volatility Normalization", options=["zscore", "minmax"])
+volAtrWeight = input.float(0.5, "Volatility ATR Weight", minval=0.0, maxval=1.0, step=0.05)
+volStdWeight = input.float(0.5, "Volatility STD Weight", minval=0.0, maxval=1.0, step=0.05)
+
+trendEntryThreshold = input.float(0.38, "Entropy Trend Entry", minval=0.0, maxval=1.0, step=0.01)
+trendExitThreshold = input.float(0.58, "Entropy Trend Exit", minval=0.0, maxval=1.0, step=0.01)
+chaoticThreshold = input.float(0.72, "Entropy Chaotic", minval=0.0, maxval=1.0, step=0.01)
+volHighThreshold = input.float(0.65, "Volatility High", minval=0.0, maxval=1.0, step=0.01)
+volLowThreshold = input.float(0.35, "Volatility Low", minval=0.0, maxval=1.0, step=0.01)
+
+persistenceBars = input.int(4, "Regime Persistence Bars", minval=1)
+
+sessionFilterEnabled = input.bool(true, "Trade Gating Enabled")
+forexRealism = input.bool(true, "Forex Realism (Weekdays Only)")
+sessionTimezone = input.string("Etc/UTC", "Session Timezone")
+londonSession = input.session("0800-1500", "London Session")
+newYorkSession = input.session("1400-2100", "New York Session")
+
+baseRiskPerTrade = input.float(0.01, "Base Risk Per Trade", minval=0.0001, maxval=0.10, step=0.0001)
+maxConcurrentTrades = input.int(3, "Max Concurrent Trades (Global Cap)", minval=1, maxval=10)
+maxConcurrentPerRegime = input.bool(true, "Max Concurrent Trades Per Regime")
+trendMaxConcurrentTrades = input.int(2, "Trend Regime Max Concurrent Trades", minval=1, maxval=10)
+rangeTransitionMaxConcurrentTrades = input.int(1, "Range/Transition Regime Max Concurrent Trades", minval=1, maxval=10)
+spreadNoiseProtection = input.bool(true, "Spread Noise Protection")
+minMoveFractionAtr = input.float(0.3, "Min Move Fraction ATR", minval=0.0, step=0.05)
+minBodyFilter = input.bool(true, "Min Body Filter")
+
+trendSlAtrMult = input.float(1.5, "Trend SL ATR Mult", minval=0.1, step=0.1)
+trendRr = input.float(2.5, "Trend RR", minval=0.5, step=0.1)
+trendTrailEnabled = input.bool(true, "Trend Trailing Stop")
+trendTrailAtrMult = input.float(1.0, "Trend Trail ATR Mult", minval=0.1, step=0.1)
+
+rangeLookback = input.int(40, "Range Structure Lookback", minval=5)
+rangeNearAtrMult = input.float(0.35, "Range Near-Level ATR Mult", minval=0.05, step=0.05)
+rangeTpMode = input.string("Opposite Band", "Range TP Mode", options=["Mid Range", "Opposite Band"])
+
+transitionBreakoutLookback = input.int(20, "Transition Breakout Lookback", minval=5)
+transitionProbeFactor = input.float(0.30, "Transition Probe Size Factor", minval=0.05, maxval=1.0, step=0.05)
+transitionSlAtrMult = input.float(1.2, "Transition SL ATR Mult", minval=0.1, step=0.1)
+transitionRr = input.float(2.0, "Transition RR", minval=0.5, step=0.1)
+
+reversalStructureLookback = input.int(10, "Reversal Structure Lookback", minval=2)
+reversalWatchThreshold = input.float(0.4, "Reversal Watch Threshold", minval=0.0, maxval=1.0, step=0.01)
+reversalPrepareThreshold = input.float(0.5, "Reversal Prepare Threshold", minval=0.0, maxval=1.0, step=0.01)
+reversalConfirmThreshold = input.float(0.6, "Reversal Confirm Threshold", minval=0.0, maxval=1.0, step=0.01)
+reversalStrongThreshold = input.float(0.75, "Reversal Strong Threshold", minval=0.0, maxval=1.0, step=0.01)
+reversalVolConfirmEnabled = input.bool(true, "Reversal Volatility Confirmation")
+reversalSessionAlignEnabled = input.bool(true, "Reversal Session Alignment")
+
+mtfEnabled = input.bool(true, "Enable MTF Filter")
+higherTf = input.timeframe("240", "Higher Timeframe")
+
+showRegimeBg = input.bool(true, "Regime Background")
+showSignals = input.bool(true, "Show Signal Markers")
+showRegimePanel = input.bool(true, "Show Regime Panel")
+showReversalPanel = input.bool(true, "Show Reversal Panel")
+showDashboard = input.bool(true, "Show Compact Dashboard")
+enableReversalBarColoring = input.bool(true, "Enable Reversal Bar Coloring")
+
+// =====================
+// Helpers
+// =====================
+f_return(float value, float prev, string mode) =>
+    mode == "log" ? math.log(value / prev) : (value / prev) - 1.0
+
+f_minmax(float x, int len) =>
+    float lo = ta.lowest(x, len)
+    float hi = ta.highest(x, len)
+    float span = hi - lo
+    span > 0 ? (x - lo) / span : 0.5
+
+f_quantile_bin(float v, float q20, float q40, float q60, float q80) =>
+    int b = na
+    if not na(v)
+        b := v <= q20 ? 0 : v <= q40 ? 1 : v <= q60 ? 2 : v <= q80 ? 3 : 4
+    b
+
+f_shannon_entropy(int bSeries, int win, int bins) =>
+    float result = na
+    if bar_index >= win
+        float[] counts = array.new_float(bins, 0.0)
+        int valid = 0
+        for i = 0 to win - 1
+            int b = bSeries[i]
+            if not na(b)
+                array.set(counts, b, array.get(counts, b) + 1.0)
+                valid += 1
+
+        if valid > 0
+            float h = 0.0
+            for j = 0 to bins - 1
+                float p = array.get(counts, j) / valid
+                if p > 0
+                    h += -p * math.log(p)
+            result := h / math.log(bins)
+    result
+
+f_clamp01(float v) =>
+    math.max(0.0, math.min(1.0, v))
+
+f_sigmoid(float x) =>
+    1.0 / (1.0 + math.exp(-x))
+
+f_zscore(float x, int len) =>
+    float mean = ta.sma(x, len)
+    float stdev = ta.stdev(x, len)
+    stdev > 0 ? (x - mean) / stdev : 0.0
+
+f_rejection_bull() =>
+    float body = math.abs(close - open)
+    float lowerWick = math.min(open, close) - low
+    close > open and lowerWick > body * 1.2
+
+f_rejection_bear() =>
+    float body = math.abs(close - open)
+    float upperWick = high - math.max(open, close)
+    close < open and upperWick > body * 1.2
+
+f_risk_qty(float stopDist, float riskFrac) =>
+    float safeStop = math.max(stopDist, syminfo.mintick)
+    float cashRisk = strategy.equity * riskFrac
+    float q = cashRisk / safeStop
+    math.max(q, 0.0)
+
+// =====================
+// Core Engine: Returns, Binning, Entropy
+// =====================
+ret = f_return(src, src[1], returnType)
+
+q20 = ta.percentile_linear_interpolation(ret, windowSize, 20)
+q40 = ta.percentile_linear_interpolation(ret, windowSize, 40)
+q60 = ta.percentile_linear_interpolation(ret, windowSize, 60)
+q80 = ta.percentile_linear_interpolation(ret, windowSize, 80)
+
+// Spec uses 5 quantile bins (levels -2..2); we map to indices 0..4.
+bin = f_quantile_bin(ret, q20, q40, q60, q80)
+entropyRaw = f_shannon_entropy(bin, windowSize, binCount)
+entropySingle = ta.ema(entropyRaw, smoothingLength)
+entropyDouble = ta.ema(ta.ema(entropyRaw, entropyShortEmaLength), entropyLongEmaLength)
+entropy = entropyDoubleSmoothing ? entropyDouble : entropySingle
+entropyDeriv = entropy - entropy[1]
+
+// =====================
+// Volatility Blend: ATR + STD (weighted + normalized)
+// =====================
+atrRaw = ta.atr(atrLength) / src
+stdRaw = ta.stdev(ret, volatilityLength)
+atrNorm = volNormalization == "zscore" ? f_sigmoid(f_zscore(atrRaw, volatilityLength)) : f_minmax(atrRaw, volatilityLength)
+stdNorm = volNormalization == "zscore" ? f_sigmoid(f_zscore(stdRaw, volatilityLength)) : f_minmax(stdRaw, volatilityLength)
+volWeightSum = volAtrWeight + volStdWeight
+atrWeightNorm = volWeightSum > 0 ? volAtrWeight / volWeightSum : 0.5
+stdWeightNorm = volWeightSum > 0 ? volStdWeight / volWeightSum : 0.5
+volatility = f_clamp01(atrWeightNorm * atrNorm + stdWeightNorm * stdNorm)
+atr = ta.atr(atrLength)
+
+// =====================
+// Trend Filter
+// =====================
+emaFast = ta.ema(src, emaFastLen)
+emaSlow = ta.ema(src, emaSlowLen)
+bullTrend = emaFast > emaSlow
+bearTrend = emaFast < emaSlow
+trendStrength = math.abs(emaFast - emaSlow) / close
+trendStrengthSma = ta.sma(trendStrength, trendStrengthSmaLength)
+trendStrengthPass = not trendStrengthFilterEnabled or trendStrength > trendStrengthSma
+
+// =====================
+// Session Filter
+// =====================
+inLondon = not na(time(timeframe.period, londonSession, sessionTimezone))
+inNewYork = not na(time(timeframe.period, newYorkSession, sessionTimezone))
+isWeekday = dayofweek >= dayofweek.monday and dayofweek <= dayofweek.friday
+sessionCoreActive = sessionFilterEnabled ? (inLondon or inNewYork) : true
+sessionActive = sessionCoreActive and (not forexRealism or syminfo.type != "forex" or isWeekday)
+is30m = timeframe.isintraday and timeframe.multiplier == 30
+
+// =====================
+// Reversal Engine
+// =====================
+entropyScoreDenom = 1.0 - trendExitThreshold
+entropyScore = entropyScoreDenom > 0 ? f_clamp01((entropy - trendExitThreshold) / entropyScoreDenom) : 0.0
+derivativeScore = math.max(entropyDeriv, 0.0)
+volScore = math.max(volatility - nz(volatility[1], volatility), 0.0)
+lowestLowPrev = ta.lowest(low, reversalStructureLookback)[1]
+highestHighPrev = ta.highest(high, reversalStructureLookback)[1]
+structureBearish = close < lowestLowPrev ? 1.0 : 0.0
+structureBullish = close > highestHighPrev ? 1.0 : 0.0
+
+reversalScoreLong = entropyScore * 0.4 + derivativeScore * 0.3 + volScore * 0.2 + structureBearish * 0.1
+reversalScoreShort = entropyScore * 0.4 + derivativeScore * 0.3 + volScore * 0.2 + structureBullish * 0.1
+reversalScore = math.max(reversalScoreLong, reversalScoreShort)
+longReversalScore = reversalScoreLong
+shortReversalScore = reversalScoreShort
+
+reversalVolSma10 = ta.sma(volatility, 10)
+reversalVolConfirmPass = not reversalVolConfirmEnabled or volatility > reversalVolSma10
+reversalSessionAlignPass = not reversalSessionAlignEnabled or sessionActive
+reversalFiltersPass = reversalVolConfirmPass and reversalSessionAlignPass
+
+reversalLongWeak = reversalFiltersPass and longReversalScore > reversalWatchThreshold
+reversalLongConfirmed = reversalFiltersPass and longReversalScore > reversalConfirmThreshold
+reversalLongStrong = reversalFiltersPass and longReversalScore > reversalStrongThreshold
+reversalShortWeak = reversalFiltersPass and shortReversalScore > reversalWatchThreshold
+reversalShortConfirmed = reversalFiltersPass and shortReversalScore > reversalConfirmThreshold
+reversalShortStrong = reversalFiltersPass and shortReversalScore > reversalStrongThreshold
+
+// =====================
+// Regime Logic
+// =====================
+const int REG_TREND = 0
+const int REG_RANGE = 1
+const int REG_CHAOTIC = 2
+const int REG_TRANSITION = 3
+
+var bool trendLatch = false
+if not trendLatch and entropy < trendEntryThreshold and (not entropyDerivativeInclusion or entropyDeriv <= 0)
+    trendLatch := true
+if trendLatch and reversalFiltersPass and reversalScore > reversalConfirmThreshold
+    trendLatch := false
+
+bool condChaotic = entropy > chaoticThreshold and volatility > volHighThreshold
+bool condRange = entropy > chaoticThreshold and volatility <= volLowThreshold
+
+int candidateRegime = REG_TRANSITION
+if condChaotic
+    candidateRegime := REG_CHAOTIC
+else if condRange
+    candidateRegime := REG_RANGE
+else if trendLatch and trendStrengthPass
+    candidateRegime := REG_TREND
+
+var int regime = REG_TRANSITION
+var int lastCandidate = REG_TRANSITION
+var int candidateCount = 0
+
+if candidateRegime == lastCandidate
+    candidateCount += 1
+else
+    lastCandidate := candidateRegime
+    candidateCount := 1
+
+if candidateCount >= persistenceBars
+    regime := candidateRegime
+
+isTrend = regime == REG_TREND
+isRange = regime == REG_RANGE
+isChaotic = regime == REG_CHAOTIC
+isTransition = regime == REG_TRANSITION
+
+// =====================
+// Multi-Timeframe Filters
+// =====================
+htfEntropy = request.security(syminfo.tickerid, higherTf, entropy)
+htfVol = request.security(syminfo.tickerid, higherTf, volatility)
+htfEmaFast = request.security(syminfo.tickerid, higherTf, ta.ema(src, emaFastLen))
+htfEmaSlow = request.security(syminfo.tickerid, higherTf, ta.ema(src, emaSlowLen))
+htfTrendStrength = request.security(syminfo.tickerid, higherTf, math.abs(ta.ema(close, emaFastLen) - ta.ema(close, emaSlowLen)) / close)
+htfTrendStrengthSma = request.security(syminfo.tickerid, higherTf, ta.sma(math.abs(ta.ema(close, emaFastLen) - ta.ema(close, emaSlowLen)) / close, trendStrengthSmaLength))
+htfTrendStrengthPass = not trendStrengthFilterEnabled or htfTrendStrength > htfTrendStrengthSma
+
+htfIsTrend = htfEntropy < trendEntryThreshold and htfTrendStrengthPass
+htfIsChaotic = htfEntropy > chaoticThreshold and htfVol > volHighThreshold
+
+// =====================
+// Global Trade Gating
+// =====================
+barMove = math.abs(close - nz(close[1], close))
+bodySize = math.abs(close - open)
+barRange = high - low
+movePass = barMove >= atr * minMoveFractionAtr
+bodyPass = not minBodyFilter or (barRange > 0 and bodySize / barRange >= 0.35)
+spreadNoisePass = not spreadNoiseProtection or (movePass and bodyPass)
+
+trendOpenTrades = 0
+rangeTransitionOpenTrades = 0
+if strategy.opentrades > 0
+    for i = 0 to strategy.opentrades - 1
+        string entryId = strategy.opentrades.entry_id(i)
+        if str.contains(entryId, "Trend")
+            trendOpenTrades += 1
+        else if str.contains(entryId, "Range") or str.contains(entryId, "Trans")
+            rangeTransitionOpenTrades += 1
+
+canOpenGlobal = strategy.opentrades < maxConcurrentTrades
+canOpenTrend = canOpenGlobal and (not maxConcurrentPerRegime or trendOpenTrades < trendMaxConcurrentTrades)
+canOpenRange = canOpenGlobal and (not maxConcurrentPerRegime or rangeTransitionOpenTrades < rangeTransitionMaxConcurrentTrades)
+canOpenTransition = canOpenGlobal and (not maxConcurrentPerRegime or rangeTransitionOpenTrades < rangeTransitionMaxConcurrentTrades)
+
+globalFiltersPass = not isChaotic and sessionActive and is30m and spreadNoisePass
+mtfPassGlobal = not mtfEnabled or not htfIsChaotic
+
+// Dynamic risk: risk * (1 - entropy)
+dynRiskRaw = baseRiskPerTrade * (1.0 - f_clamp01(nz(entropy, 1.0)))
+dynRisk = dynRiskRaw
+
+// =====================
+// Execution Layer: Trend Strategy
+// =====================
+trendPullbackLong = low <= emaFast and close >= emaFast
+trendPullbackShort = high >= emaFast and close <= emaFast
+bullConfirm = close > open and close > close[1]
+bearConfirm = close < open and close < close[1]
+
+trendLongSignal = globalFiltersPass and mtfPassGlobal and canOpenTrend and isTrend and trendStrengthPass and bullTrend and trendPullbackLong and bullConfirm and (not mtfEnabled or htfIsTrend)
+trendShortSignal = globalFiltersPass and mtfPassGlobal and canOpenTrend and isTrend and trendStrengthPass and bearTrend and trendPullbackShort and bearConfirm and (not mtfEnabled or htfIsTrend)
+
+var float trendLongStop = na
+var float trendLongTp = na
+var float trendShortStop = na
+var float trendShortTp = na
+
+if trendLongSignal and strategy.position_size >= 0
+    float stopDist = atr * trendSlAtrMult
+    float qty = f_risk_qty(stopDist, dynRisk)
+    trendLongStop := close - stopDist
+    trendLongTp := close + stopDist * trendRr
+    strategy.entry("TrendLong", strategy.long, qty=qty)
+
+if trendShortSignal and strategy.position_size <= 0
+    float stopDist = atr * trendSlAtrMult
+    float qty = f_risk_qty(stopDist, dynRisk)
+    trendShortStop := close + stopDist
+    trendShortTp := close - stopDist * trendRr
+    strategy.entry("TrendShort", strategy.short, qty=qty)
+
+if trendTrailEnabled and strategy.position_size > 0 and not na(trendLongStop)
+    trendLongStop := math.max(trendLongStop, close - atr * trendTrailAtrMult)
+if trendTrailEnabled and strategy.position_size < 0 and not na(trendShortStop)
+    trendShortStop := math.min(trendShortStop, close + atr * trendTrailAtrMult)
+
+strategy.exit("TrendLongExit", "TrendLong", stop=trendLongStop, limit=trendLongTp)
+strategy.exit("TrendShortExit", "TrendShort", stop=trendShortStop, limit=trendShortTp)
+
+// =====================
+// Execution Layer: Range Strategy
+// =====================
+rangeSupport = ta.lowest(low, rangeLookback)
+rangeResistance = ta.highest(high, rangeLookback)
+rangeMid = (rangeSupport + rangeResistance) * 0.5
+rangeBand = atr * rangeNearAtrMult
+
+nearSupport = close <= (rangeSupport + rangeBand)
+nearResistance = close >= (rangeResistance - rangeBand)
+
+rangeLongSignal = globalFiltersPass and mtfPassGlobal and canOpenRange and isRange and nearSupport and f_rejection_bull()
+rangeShortSignal = globalFiltersPass and mtfPassGlobal and canOpenRange and isRange and nearResistance and f_rejection_bear()
+
+pipSize = syminfo.type == "forex" ? (syminfo.mintick < 0.01 ? syminfo.mintick * 10.0 : syminfo.mintick) : syminfo.mintick
+rangeBuffer = pipSize * 5.0
+
+var float rangeLongStop = na
+var float rangeLongTp = na
+var float rangeShortStop = na
+var float rangeShortTp = na
+
+if rangeLongSignal and strategy.position_size >= 0
+    rangeLongStop := rangeSupport - rangeBuffer
+    float stopDist = math.max(close - rangeLongStop, syminfo.mintick)
+    float qty = f_risk_qty(stopDist, dynRisk)
+    rangeLongTp := rangeTpMode == "Mid Range" ? rangeMid : (rangeResistance - rangeBuffer)
+    strategy.entry("RangeLong", strategy.long, qty=qty)
+
+if rangeShortSignal and strategy.position_size <= 0
+    rangeShortStop := rangeResistance + rangeBuffer
+    float stopDist = math.max(rangeShortStop - close, syminfo.mintick)
+    float qty = f_risk_qty(stopDist, dynRisk)
+    rangeShortTp := rangeTpMode == "Mid Range" ? rangeMid : (rangeSupport + rangeBuffer)
+    strategy.entry("RangeShort", strategy.short, qty=qty)
+
+strategy.exit("RangeLongExit", "RangeLong", stop=rangeLongStop, limit=rangeLongTp)
+strategy.exit("RangeShortExit", "RangeShort", stop=rangeShortStop, limit=rangeShortTp)
+
+// =====================
+// Execution Layer: Transition Strategy
+// =====================
+breakoutUp = close > ta.highest(high, transitionBreakoutLookback)[1]
+breakoutDn = close < ta.lowest(low, transitionBreakoutLookback)[1]
+
+transitionLongSignal = globalFiltersPass and mtfPassGlobal and canOpenTransition and isTransition and breakoutUp and bullConfirm and reversalFiltersPass and reversalScore > reversalPrepareThreshold
+transitionShortSignal = globalFiltersPass and mtfPassGlobal and canOpenTransition and isTransition and breakoutDn and bearConfirm and reversalFiltersPass and reversalScore > reversalPrepareThreshold
+reversalLongSignal = globalFiltersPass and mtfPassGlobal and canOpenTransition and isTransition and reversalFiltersPass and reversalScoreShort > 0.7 and bullConfirm and volScore > 0
+reversalShortSignal = globalFiltersPass and mtfPassGlobal and canOpenTransition and isTransition and reversalFiltersPass and reversalScoreLong > 0.7 and bearConfirm and volScore > 0
+
+var float transLongStop = na
+var float transLongTp = na
+var float transShortStop = na
+var float transShortTp = na
+var float revLongStop = na
+var float revLongTp = na
+var float revShortStop = na
+var float revShortTp = na
+
+if transitionLongSignal and strategy.position_size >= 0
+    float stopDist = atr * transitionSlAtrMult
+    float qty = f_risk_qty(stopDist, dynRisk * transitionProbeFactor)
+    transLongStop := close - stopDist
+    transLongTp := close + stopDist * transitionRr
+    strategy.entry("TransLong", strategy.long, qty=qty)
+
+if transitionShortSignal and strategy.position_size <= 0
+    float stopDist = atr * transitionSlAtrMult
+    float qty = f_risk_qty(stopDist, dynRisk * transitionProbeFactor)
+    transShortStop := close + stopDist
+    transShortTp := close - stopDist * transitionRr
+    strategy.entry("TransShort", strategy.short, qty=qty)
+
+if reversalLongSignal and strategy.position_size >= 0
+    float stopDist = atr * transitionSlAtrMult
+    float qty = f_risk_qty(stopDist, dynRisk * transitionProbeFactor)
+    revLongStop := close - stopDist
+    revLongTp := close + stopDist * transitionRr
+    strategy.entry("RevLong", strategy.long, qty=qty)
+
+if reversalShortSignal and strategy.position_size <= 0
+    float stopDist = atr * transitionSlAtrMult
+    float qty = f_risk_qty(stopDist, dynRisk * transitionProbeFactor)
+    revShortStop := close + stopDist
+    revShortTp := close - stopDist * transitionRr
+    strategy.entry("RevShort", strategy.short, qty=qty)
+
+strategy.exit("TransLongExit", "TransLong", stop=transLongStop, limit=transLongTp)
+strategy.exit("TransShortExit", "TransShort", stop=transShortStop, limit=transShortTp)
+strategy.exit("RevLongExit", "RevLong", stop=revLongStop, limit=revLongTp)
+strategy.exit("RevShortExit", "RevShort", stop=revShortStop, limit=revShortTp)
+
+// =====================
+// Output Flags + Signals
+// =====================
+longSignal = trendLongSignal or rangeLongSignal or transitionLongSignal or reversalLongSignal
+shortSignal = trendShortSignal or rangeShortSignal or transitionShortSignal or reversalShortSignal
+
+// =====================
+// Visualization
+// =====================
+regimeStrength = entropy * 0.7 + volatility * 0.3
+reversalNet = longReversalScore - shortReversalScore
+regimeColor = isTrend ? color.new(color.green, 92) : isRange ? color.new(color.blue, 92) : isChaotic ? color.new(color.red, 92) : color.new(color.yellow, 92)
+bgcolor(showRegimeBg ? regimeColor : na)
+
+plot(emaFast, "EMA Fast", color=color.new(color.green, 0))
+plot(emaSlow, "EMA Slow", color=color.new(color.red, 0))
+
+plot(showRegimePanel ? regimeStrength : na, title="Regime Strength", color=color.orange, linewidth=2, display=display.pane)
+plot(showReversalPanel ? reversalNet : na, title="Reversal Net", style=plot.style_histogram, color=reversalNet > 0 ? color.new(color.green, 0) : reversalNet < 0 ? color.new(color.red, 0) : color.new(color.gray, 70), linewidth=2, display=display.pane)
+plot(showReversalPanel ? 0.0 : na, title="Reversal Net Zero", color=color.new(color.gray, 70), linewidth=1, display=display.pane)
+plot(showReversalPanel ? reversalConfirmThreshold : na, title="Reversal Confirm", color=color.new(color.blue, 35), linewidth=1, style=plot.style_linebr, display=display.pane)
+plot(showReversalPanel ? reversalStrongThreshold : na, title="Reversal Strong", color=color.new(color.purple, 35), linewidth=1, style=plot.style_linebr, display=display.pane)
+
+strongReversalLongMarker = showSignals and reversalLongStrong
+strongReversalShortMarker = showSignals and reversalShortStrong
+trendLongMarker = showSignals and not strongReversalLongMarker and trendLongSignal
+trendShortMarker = showSignals and not strongReversalShortMarker and trendShortSignal
+rangeLongMarker = showSignals and not strongReversalLongMarker and not trendLongMarker and rangeLongSignal
+rangeShortMarker = showSignals and not strongReversalShortMarker and not trendShortMarker and rangeShortSignal
+
+plotshape(strongReversalLongMarker, title="Strong Reversal Long", style=shape.triangleup, color=color.new(color.green, 0), location=location.belowbar, size=size.small, text="RS")
+plotshape(strongReversalShortMarker, title="Strong Reversal Short", style=shape.triangledown, color=color.new(color.red, 0), location=location.abovebar, size=size.small, text="RS")
+plotshape(trendLongMarker, title="Trend Long Marker", style=shape.triangleup, color=color.new(color.green, 0), location=location.belowbar, size=size.tiny, text="T")
+plotshape(trendShortMarker, title="Trend Short Marker", style=shape.triangledown, color=color.new(color.red, 0), location=location.abovebar, size=size.tiny, text="T")
+plotshape(rangeLongMarker, title="Range Long Marker", style=shape.triangleup, color=color.new(color.blue, 0), location=location.belowbar, size=size.tiny, text="R")
+plotshape(rangeShortMarker, title="Range Short Marker", style=shape.triangledown, color=color.new(color.blue, 0), location=location.abovebar, size=size.tiny, text="R")
+
+barColor = reversalNet > 0.6 ? color.new(color.green, 0) : reversalNet < -0.6 ? color.new(color.red, 0) : na
+barcolor(enableReversalBarColoring ? barColor : na)
+
+var table dashboard = table.new(position.top_right, 1, 1, border_width=1)
+regimeLabel = isTrend ? "Trend" : isRange ? "Range" : isChaotic ? "Chaotic" : "Transition"
+dashboardText = "Reg " + regimeLabel + " | E " + str.tostring(entropy, "#.###") + " | R " + str.tostring(reversalScore, "#.###") + " | V " + str.tostring(volatility, "#.###")
+table.cell(dashboard, 0, 0, showDashboard ? dashboardText : "", text_color=showDashboard ? color.white : color.new(color.white, 100), bgcolor=showDashboard ? color.new(color.black, 70) : color.new(color.black, 100), text_size=size.tiny)
+
+if barstate.isconfirmed and longSignal
+    alert("ERDE_FX_30M_EXEC long signal", alert.freq_once_per_bar_close)
+if barstate.isconfirmed and shortSignal
+    alert("ERDE_FX_30M_EXEC short signal", alert.freq_once_per_bar_close)
+if barstate.isconfirmed and reversalLongWeak
+    alert("ERDE_FX_30M_EXEC long reversal weak", alert.freq_once_per_bar_close)
+if barstate.isconfirmed and reversalLongConfirmed
+    alert("ERDE_FX_30M_EXEC long reversal confirmed", alert.freq_once_per_bar_close)
+if barstate.isconfirmed and reversalLongStrong
+    alert("ERDE_FX_30M_EXEC long reversal strong", alert.freq_once_per_bar_close)
+if barstate.isconfirmed and reversalShortWeak
+    alert("ERDE_FX_30M_EXEC short reversal weak", alert.freq_once_per_bar_close)
+if barstate.isconfirmed and reversalShortConfirmed
+    alert("ERDE_FX_30M_EXEC short reversal confirmed", alert.freq_once_per_bar_close)
+if barstate.isconfirmed and reversalShortStrong
+    alert("ERDE_FX_30M_EXEC short reversal strong", alert.freq_once_per_bar_close)

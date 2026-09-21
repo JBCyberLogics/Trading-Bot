@@ -1,0 +1,19 @@
+[Unit]
+Description=SMC ICT Trading Bot
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ ansible_user }}
+WorkingDirectory={{ project_dir }}
+Environment="PATH={{ venv_dir }}/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="WINEPREFIX={{ wine_prefix }}"
+ExecStartPre={{ venv_dir }}/bin/python {{ project_dir }}/scripts/validate_for_live.py --quick
+ExecStart={{ venv_dir }}/bin/python {{ project_dir }}/scripts/live_deploy.py
+ExecStop=/bin/kill -SIGINT $MAINPID
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

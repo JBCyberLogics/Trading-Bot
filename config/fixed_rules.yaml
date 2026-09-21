@@ -1,0 +1,59 @@
+description: "These rules are hard-coded and cannot be modified by the user"
+
+layer1_bias:
+  timeframe: 4H
+  swing_confirmation: "2 candles after"
+  bias_types:
+    - BULLISH
+    - BEARISH
+    - NEUTRAL
+    - TRANSITION
+  choch_detection: true
+
+layer2_structure:
+  primary_timeframe: 1H
+  order_blocks:
+    definition: "Last opposite candle before impulsive move"
+    impulse_threshold: "1.5 x ATR"
+    max_age_hours: 24
+  fair_value_gaps:
+    definition: "Three-candle imbalance"
+    min_pips: 2.0
+    max_age_hours: 12
+  liquidity_levels:
+    - swing_points
+    - previous_day
+    - round_numbers
+
+layer3_entry:
+  state_machine:
+    - IDLE
+    - SWEEP
+    - DISPLACEMENT
+    - RETRACE
+    - ENTRY_READY
+  sweep_max_age: "5 candles"
+  displacement_required: "within 3 candles"
+  retrace_max_candles: 8
+  entry_method: "LIMIT at zone midpoint"
+  min_rr_1h: 2.0
+  min_rr_30m: 1.8
+
+risk_management:
+  governor_states:
+    - NORMAL
+    - CAUTION
+    - DEFENSIVE
+    - HALT
+  base_risk_percent: 1.0
+  max_concurrent_positions: 3
+  max_daily_loss_pct: 3.0
+  max_weekly_loss_pct: 6.0
+  max_drawdown_pct: 8.0
+  news_filter_minutes: 15
+
+self_learning:
+  champion_allocation: 80
+  challenger_allocation: 20
+  bootstrap_confidence: 0.95
+  weekly_evolution: "Sunday 00:00 UTC"

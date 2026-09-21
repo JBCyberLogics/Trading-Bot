@@ -1,0 +1,208 @@
+{
+  "system": "multi_timeframe_execution_engine",
+  "version": "1.5",
+  "description": "Multi-timeframe ICT execution engine (H4 context, H1 validation, M15 trigger)",
+
+  "timeframes": {
+    "h4": {
+      "role": "bias_and_context",
+      "outputs": ["bias", "market_structure", "key_levels"],
+      "bias_values": ["bullish", "bearish", "ranging"],
+      "structure": ["HH_HL", "LH_LL", "transition"],
+      "levels": ["order_blocks", "liquidity_pools", "premium_discount"]
+    },
+    "h1": {
+      "role": "setup_validation",
+      "outputs": ["structure_shift", "retracement_zone", "continuation_context"],
+      "events": ["bos_up", "bos_down", "retracement", "continuation"],
+      "zones": ["order_block", "fair_value_gap"],
+      "continuation_definitions": {
+        "bullish_continuation": "bos_up == true AND price_in_retracement_zone",
+        "bearish_continuation": "bos_down == true AND price_in_retracement_zone"
+      }
+    },
+    "m15": {
+      "role": "entry_trigger",
+      "outputs": ["liquidity_event", "structure_confirmation", "entry_signal"],
+      "events": ["liquidity_sweep", "bos_up", "bos_down", "rejection", "displacement"],
+      "zones": ["order_block", "imbalance"]
+    }
+  },
+
+  "alignment_rules": {
+    "mandatory": true,
+    "hierarchy": ["h4", "h1", "m15"],
+    "strict_alignment_required": true,
+    "conditions": {
+      "buy_alignment": {
+        "h4_bias": "bullish",
+        "h1_structure": "bullish_continuation",
+        "m15_trigger": "bullish_confirmation",
+        "additional_checks": ["h4_price_in_discount", "liquidity_swept_below"]
+      },
+      "sell_alignment": {
+        "h4_bias": "bearish",
+        "h1_structure": "bearish_continuation",
+        "m15_trigger": "bearish_confirmation",
+        "additional_checks": ["h4_price_in_premium", "liquidity_swept_above"]
+      }
+    }
+  },
+
+  "buy_signal_logic": {
+    "h4_requirements": [
+      "bias == bullish",
+      "price in discount or H4 order block",
+      "liquidity below swept or targeted"
+    ],
+    "h1_requirements": [
+      "bos upward",
+      "retracement into H1 OB or FVG",
+      "continuation context true"
+    ],
+    "m15_trigger": [
+      "liquidity sweep of lows (optional)",
+      "bos upward",
+      "retracement into M15 OB/FVG",
+      "bullish rejection or displacement candle"
+    ],
+    "final_condition": "all_timeframes_aligned == true"
+  },
+
+  "sell_signal_logic": {
+    "h4_requirements": [
+      "bias == bearish",
+      "price in premium or H4 order block",
+      "liquidity above swept or targeted"
+    ],
+    "h1_requirements": [
+      "bos downward",
+      "retracement into H1 OB or FVG",
+      "continuation context true"
+    ],
+    "m15_trigger": [
+      "liquidity sweep of highs (optional)",
+      "bos downward",
+      "retracement into M15 OB/FVG",
+      "bearish rejection or displacement candle"
+    ],
+    "final_condition": "all_timeframes_aligned == true"
+  },
+
+  "filters": {
+    "no_trade_conditions": [
+      "h4_bias == ranging_without_edges",
+      "h1_structure opposes h4 bias",
+      "no liquidity event on m15 when required",
+      "price not touching valid zone",
+      "entry without retracement",
+      "mid-range chop"
+    ],
+    "liquidity_requirement": true,
+    "structure_confirmation_required": true,
+    "retracement_required": true,
+    "allow_partial_alignment": false
+  },
+
+  "range_strategy": {
+    "enabled": true,
+    "conditions": [
+      "h4_bias == ranging",
+      "price at range high or low",
+      "liquidity sweep near edge",
+      "m15 rejection signal"
+    ],
+    "signals": ["range_long", "range_short"]
+  },
+
+  "signal_output": {
+    "types": ["buy", "sell", "range", "none"],
+    "buy_signal": {
+      "trigger": "h4_bias_bullish && h1_structure_bullish_continuation && m15_bullish_trigger",
+      "execution": "enter_after_m15_confirmation_close",
+      "marker": {
+        "style": "triangle_up",
+        "location": "below_candle",
+        "color": "green"
+      }
+    },
+    "sell_signal": {
+      "trigger": "h4_bias_bearish && h1_structure_bearish_continuation && m15_bearish_trigger",
+      "execution": "enter_after_m15_confirmation_close",
+      "marker": {
+        "style": "triangle_down",
+        "location": "above_candle",
+        "color": "red"
+      }
+    },
+    "range_signal": {
+      "trigger": "h4_bias_ranging && m15_rejection_at_edge",
+      "execution": "fade_range_edge",
+      "marker": {
+        "style": "diamond",
+        "location": "price_level",
+        "color": "yellow"
+      }
+    }
+  },
+
+  "risk_model": {
+    "stop_loss": {
+      "placement": "beyond_farthest_of_h1_structure_or_h4_zone",
+      "calculation_rule": "max(h1_structure_level, h4_zone_level) + buffer",
+      "buffer": "0.25 * ATR(14)"
+    },
+    "take_profit": {
+      "targets": ["next_liquidity_pool", "opposite_h4_level", "equal_highs_or_lows"],
+      "scaling_allowed": true
+    },
+    "position_sizing": {
+      "risk_per_trade_percent": 1.0
+    }
+  },
+
+  "execution_flow": [
+    "step_1_read_h4_bias",
+    "step_2_identify_h4_levels",
+    "step_3_validate_h1_structure",
+    "step_4_wait_for_price_to_reach_zone",
+    "step_5_detect_m15_liquidity_sweep",
+    "step_6_confirm_m15_structure_shift",
+    "step_7_wait_for_retracement",
+    "step_8_generate_signal_on_confirmation",
+    "step_9_define_entry_sl_tp"
+  ],
+
+  "visualization": {
+    "overlay_enabled": false,
+    "execution_markers": {
+      "buy": {
+        "style": "triangle_up",
+        "placement": "below_candle",
+        "color": "green",
+        "size": "tiny"
+      },
+      "sell": {
+        "style": "triangle_down",
+        "placement": "above_candle",
+        "color": "red",
+        "size": "tiny"
+      },
+      "range": {
+        "style": "diamond",
+        "placement": "price_level",
+        "color": "yellow",
+        "size": "small"
+      }
+    },
+    "notes": "Only real-time alignment markers are plotted; no historical overlays or additional bias labels." 
+  },
+
+  "performance": {
+    "cache_htf_data": true,
+    "repaint_protection": true,
+    "calculate_on_bar_close": true,
+    "max_bars_for_calculation": 1000,
+    "real_time_updates": true
+  }
+}
